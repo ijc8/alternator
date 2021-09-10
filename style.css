@@ -1,0 +1,92 @@
+body {
+    width: 50%;
+    margin: auto;
+}
+
+.runnable .ace_editor {
+    border-bottom: 1px solid #ddd;
+    font-size: 16px;
+}
+
+.runnable {
+    border: 1px solid black;
+    border-radius: 5px;
+}
+
+.runnable .run {
+    background-color: green;
+    color: white;
+    border: none;
+    width: 100%;
+    height: 28px;
+    line-height: 16px;
+    vertical-align: middle;
+}
+
+.runnable .run:not(:disabled):hover {
+    opacity: 90%;
+}
+
+.runnable .run:active {
+    opacity: 110% !important;
+}
+
+.runnable .run::before {
+    content: "▶\00a0\00a0";
+    font-size: 10px;
+    line-height: 16px;
+    vertical-align: middle;
+}
+
+.runnable .run::after {
+    content: "Run";
+}
+
+.runnable .run.loading {
+    background-color: gray;
+}
+
+.runnable .run.loading::before {
+    content: "";
+}
+
+.runnable .run.loading::after {
+    content: "Loading...";
+}
+
+.runnable .run.running {
+    background-color: gray;
+}
+
+.runnable .run.running::before {
+    content: "";
+}
+
+.runnable .run.running::after {
+    content: "Running...";
+}
+
+.runnable .run.error {
+    background-color: #ba6565;
+}
+.runnable .run.error:after {
+    content: "Load failed. Try closing and re-opening this tab; some browsers do not garbage collect on refresh.";
+}
+
+.runnable .output:not(:empty) {
+    margin: 5px 41px 5px 41px;
+    font-size: 12px;
+    font-family: monospace;
+}
+
+.runnable .output pre {
+    margin: 0;
+    padding: 0;
+    display: inline;
+}
+
+.runnable .output img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
