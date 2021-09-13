@@ -12,11 +12,11 @@
         <div class="runnable">
             <div id="tone" class="preset">
 from aleatora import *
-run(osc(200)[:2.0] >> osc(400)[:2.0])
+main = osc(200)[:2.0] >> osc(400)[:2.0]
             </div>
             <div id="noise" class="preset">
 from aleatora import *
-run(rand * 2 - 1)
+main = rand * 2 - 1
             </div>
         </div>
         <script src="main.js"></script>

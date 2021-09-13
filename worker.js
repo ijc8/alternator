@@ -19,11 +19,7 @@ function write(output) {
 let audioCallback = null
 
 function setAudioCallback(callback) {
-    console.log("Setting callback:", callback)
-    // console.log("Let's try calling")
-    // console.log(callback(null, 42, 1, 2))
     audioCallback = callback
-    // self.workletPort.postMessage(callback)
 }
 
 function show(type, url, attrs) {
@@ -74,18 +70,14 @@ def setup_matplotlib():
 
     plt.show = show
 
-def setup_aleatora():
-    import aleatora
-    def run(stream):
-        print("Run!")
-        samples = iter(stream)
-        def callback(outdata, frames, time, status):
-            i = -1
-            for i, sample in zip(range(frames), samples):
-                outdata[i] = sample
-            return i == frames - 1
-        js.setAudioCallback(callback)
-    aleatora.run = aleatora.audio.run = run
+def play_stream(stream):
+    samples = iter(stream)
+    def callback(outdata, frames, time, status):
+        i = -1
+        for i, sample in zip(range(frames), samples):
+            outdata[i] = sample
+        return i == frames - 1
+    js.setAudioCallback(callback)
 
 def show_image(image, **attrs):
     from PIL import Image
@@ -162,12 +154,14 @@ async def run(source):
                 setup_matplotlib()
             if "embed" in imports:
                 await js.pyodide.loadPackagesFromImports("import numpy, PIL")
-            if "aleatora" in imports:
-                setup_aleatora()
             code = compile(source, "<string>", "exec", ast.PyCF_ALLOW_TOP_LEVEL_AWAIT)
-            result = eval(code, {})
+            globals = {}
+            result = eval(code, globals)
             if result:
                 await result
+            if "main" in globals:
+                print("Playing:", globals["main"])
+                play_stream(globals["main"])
         except:
             traceback.print_exc()
 `
