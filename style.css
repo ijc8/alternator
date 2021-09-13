@@ -3,6 +3,22 @@ body {
     margin: auto;
 }
 
+#tabs {
+    margin-bottom: 1em;
+}
+
+button {
+    padding: 0.5em;
+    font-size: 100%;
+    border: 1px solid black;
+    border-right: 0;
+    border-radius: 0;
+}
+
+button:last-child {
+    border-right: 1px solid black;
+}
+
 .runnable .ace_editor {
     border-bottom: 1px solid #ddd;
     font-size: 16px;

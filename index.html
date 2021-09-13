@@ -8,9 +8,14 @@
     </head>
     <body>
         <h1>Alternator Demo</h1>
-        <div class="runnable">
+        <div id="tabs"></div>
+        <div id="tone" class="runnable">
 from aleatora import *
-run(osc(200)[:4.0] >> osc(400)[:4.0])
+run(osc(200)[:2.0] >> osc(400)[:2.0])
+        </div>
+        <div id="noise" class="runnable">
+from aleatora import *
+run(rand * 2 - 1)
         </div>
         <script src="main.js"></script>
     </body>

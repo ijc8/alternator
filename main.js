@@ -16,10 +16,7 @@ async function main() {
         codebox.button.classList.remove("loading")
         codebox.button.disabled = false
     }
-    // const button = document.createElement("button")
-    // button.innerText = "start audio"
-    // button.onclick = setupAudio
-    // document.querySelector("body").prepend(button)
+    pyodideWorker.onmessage = handleMessageFromWorker
     resumeContextOnInteraction()
 }
 
@@ -44,7 +41,7 @@ function resumeContextOnInteraction() {
 }
 
 const blockSize = 1024
-let buffers
+const buffers = [new Float32Array(blockSize), new Float32Array(blockSize)]
 const promises = [null, null]
 let audioBuffers
 let nextBufferTime
@@ -72,37 +69,43 @@ async function setupAudio() {
         audioContext.createBuffer(1, blockSize, audioContext.sampleRate),
         audioContext.createBuffer(1, blockSize, audioContext.sampleRate)
     ]
+    nextBufferTime = audioContext.currentTime
+    swapBuffers(buffers[i])
+}
+
+let workerResolve = () => {}
+
+function handleMessageFromWorker(e) {
+    if (e.data.output) {
+        const pre = document.createElement("pre")
+        pre.textContent = e.data.output
+        // output.appendChild(pre)
+    } else if (e.data.url) {
+        const el = document.createElement(e.data.type)
+        el.src = e.data.url
+        if (e.data.type === "audio") {
+            el.controls = true
+        }
+        for (const [attr, value] of e.data.attrs ?? []) {
+            el[attr] = value
+        }
+        // output.appendChild(el)
+    } else if (e.data instanceof Float32Array) {
+        swapBuffers(e.data)
+    } else {
+        workerResolve(e.data)
+    }
 }
 
 async function runScript(script, output) {
     const result = await new Promise((resolve, reject) => {
         pyodideWorker.onerror = reject
-        pyodideWorker.onmessage = (e) => {
-            if (e.data.output) {
-                const pre = document.createElement("pre")
-                pre.textContent = e.data.output
-                output.appendChild(pre)
-            } else if (e.data.url) {
-                const el = document.createElement(e.data.type)
-                el.src = e.data.url
-                if (e.data.type === "audio") {
-                    el.controls = true
-                }
-                for (const [attr, value] of e.data.attrs ?? []) {
-                    el[attr] = value
-                }
-                output.appendChild(el)
-            } else if (e.data instanceof Float32Array) {
-                swapBuffers(e.data)
-            } else {
-                resolve(e.data)
-            }
-        }
+        workerResolve = resolve
         pyodideWorker.postMessage(script)
     })
-    buffers = [new Float32Array(blockSize), new Float32Array(blockSize)]
-    nextBufferTime = audioContext.currentTime
-    swapBuffers(buffers[i])
+    // buffers = [new Float32Array(blockSize), new Float32Array(blockSize)]
+    // nextBufferTime = audioContext.currentTime
+    // swapBuffers(buffers[i])
     return result
 }
 
@@ -151,6 +154,22 @@ class CodeBox {
     }
 }
 
+function selectTab(index) {
+    document.querySelectorAll(".runnable").forEach((el, i) => {
+        el.hidden = i !== index
+    })
+}
+
 const codeboxes = [...document.querySelectorAll(".runnable")].map(el => new CodeBox(el))
+const tabContainer = document.getElementById("tabs")
+document.querySelectorAll(".runnable").forEach((el, i) => {
+    el.hidden = true
+    const button = document.createElement("button")
+    button.innerText = el.id
+    tabContainer.appendChild(button)
+    button.onclick = () => selectTab(i)
+})
+
+selectTab(0)
 
 main()
