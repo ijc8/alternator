@@ -1,12 +1,16 @@
-importScripts('https://cdn.jsdelivr.net/pyodide/v0.18.0/full/pyodide.js');
+importScripts('pyodide/pyodide.js');
 
 (async () => {
-    self.pyodide = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.18.0/full/' })
+    self.pyodide = await loadPyodide({ indexURL: 'pyodide/' })
     // NOTE: We intentionally avoid runPythonAsync here because we don't want this to pre-load extra modules like matplotlib.
     self.pyodide.runPython(setupCode)
     // Aleatora setup
     await self.pyodide.loadPackagesFromImports("import micropip")
-    await self.pyodide.runPythonAsync('import micropip; await micropip.install("aleatora-0.2.0a0-py3-none-any.whl")')
+    await self.pyodide.runPythonAsync(
+        'import asyncio, micropip\n\
+await asyncio.wait([micropip.install(f"lib/{name}.whl") for name in \
+["oscpy-0.6.0-py2.py3-none-any", "mido-1.2.10-py2.py3-none-any", "sounddevice-0.4.2-py3-none-any"]])\n\
+await micropip.install("lib/aleatora-0.2.0a0-py3-none-any.whl")')
     // Inform the main thread that we finished loading.
     self.postMessage(true)
 })()

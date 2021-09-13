@@ -3,13 +3,18 @@
     <head>
         <meta charset="utf-8" /> 
         <title>Alternator Demo</title>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/ace/1.4.12/ace.js" type="text/javascript" charset="utf-8"></script>
+        <script src="lib/ace.js" type="text/javascript" charset="utf-8"></script>
         <link rel="stylesheet" href="style.css">
     </head>
     <body>
         <h1>Alternator Demo</h1>
         <div id="tabs"></div>
         <div class="runnable">
+            <div id="silence" class="preset">
+from aleatora import *
+
+main = silence
+            </div>
             <div id="tone" class="preset">
 from aleatora import *
 
@@ -26,7 +31,7 @@ from js import fetch
 
 resources = ["start", "a", "b", "c", "d"]
 for name in resources:
-    data = (await (await fetch(name + ".wav")).arrayBuffer()).to_py()
+    data = (await (await fetch(f"resources/{name}.wav")).arrayBuffer()).to_py()
     with open(name + ".wav", "wb") as f:
         f.write(data)
 
