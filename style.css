@@ -15,13 +15,26 @@ button {
     border-radius: 0;
 }
 
+button.active {
+    background: slategray;
+    color: white;
+}
+
+button:first-child {
+    border-top-left-radius: 5px;
+    border-bottom-left-radius: 5px;
+}
+
 button:last-child {
     border-right: 1px solid black;
+    border-top-right-radius: 5px;
+    border-bottom-right-radius: 5px;
 }
 
 .runnable .ace_editor {
     border-bottom: 1px solid #ddd;
     font-size: 16px;
+    min-height: 100px;
 }
 
 .runnable {

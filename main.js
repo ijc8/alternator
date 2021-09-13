@@ -7,15 +7,11 @@ async function main() {
     try {
         await new Promise(resolve => pyodideWorker.onmessage = resolve)
     } catch (err) {
-        for (const codebox of codeboxes) {
-            codebox.button.classList.add("error")
-        }
+        codebox.button.classList.add("error")
         return
     }
-    for (const codebox of codeboxes) {
-        codebox.button.classList.remove("loading")
-        codebox.button.disabled = false
-    }
+    codebox.button.classList.remove("loading")
+    codebox.button.disabled = false
     pyodideWorker.onmessage = handleMessageFromWorker
     resumeContextOnInteraction()
 }
@@ -79,7 +75,7 @@ function handleMessageFromWorker(e) {
     if (e.data.output) {
         const pre = document.createElement("pre")
         pre.textContent = e.data.output
-        // output.appendChild(pre)
+        codebox.output.appendChild(pre)
     } else if (e.data.url) {
         const el = document.createElement(e.data.type)
         el.src = e.data.url
@@ -89,7 +85,7 @@ function handleMessageFromWorker(e) {
         for (const [attr, value] of e.data.attrs ?? []) {
             el[attr] = value
         }
-        // output.appendChild(el)
+        codebox.output.appendChild(el)
     } else if (e.data instanceof Float32Array) {
         swapBuffers(e.data)
     } else {
@@ -97,15 +93,12 @@ function handleMessageFromWorker(e) {
     }
 }
 
-async function runScript(script, output) {
+async function runScript(script) {
     const result = await new Promise((resolve, reject) => {
         pyodideWorker.onerror = reject
         workerResolve = resolve
         pyodideWorker.postMessage(script)
     })
-    // buffers = [new Float32Array(blockSize), new Float32Array(blockSize)]
-    // nextBufferTime = audioContext.currentTime
-    // swapBuffers(buffers[i])
     return result
 }
 
@@ -145,7 +138,7 @@ class CodeBox {
         }
         const timer = setTimeout(() => this.button.classList.add("running"), 30)
         this.output.innerText = ""
-        await runScript(this.editor.getValue(), this.output)
+        await runScript(this.editor.getValue())
         clearTimeout(timer)
         this.button.classList.remove("running")
         for (const button of document.querySelectorAll(".runnable .run")) {
@@ -154,21 +147,33 @@ class CodeBox {
     }
 }
 
-function selectTab(index) {
-    document.querySelectorAll(".runnable").forEach((el, i) => {
-        el.hidden = i !== index
-    })
-}
+let selected = 0
+const sessions = []
 
-const codeboxes = [...document.querySelectorAll(".runnable")].map(el => new CodeBox(el))
 const tabContainer = document.getElementById("tabs")
-document.querySelectorAll(".runnable").forEach((el, i) => {
-    el.hidden = true
+document.querySelectorAll(".preset").forEach((el, i) => {
     const button = document.createElement("button")
     button.innerText = el.id
     tabContainer.appendChild(button)
     button.onclick = () => selectTab(i)
+    sessions.push(ace.createEditSession(el.textContent.trim(), "ace/mode/python"))
 })
+
+function selectTab(index) {
+    document.querySelectorAll("#tabs button").forEach((el, i) => {
+        if (i === index) {
+            el.classList.add("active")
+        } else {
+            el.classList.remove("active")
+        }
+    })
+    sessions[selected] = codebox.editor.getSession()
+    codebox.editor.setSession(sessions[index])
+    selected = index
+}
+
+const codebox = new CodeBox(document.querySelector(".runnable"))
+codebox.editor.setSession(sessions[0])
 
 selectTab(0)
 
