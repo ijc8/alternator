@@ -170,9 +170,11 @@ async def run(source):
             traceback.print_exc()
 `
 
+let playing = true
+
 self.onmessage = async (event) => {
     if (event.data instanceof Float32Array) {
-        if (audioCallback === null) {
+        if (audioCallback === null || !playing) {
             event.data.fill(0)
         } else {
             const keepGoing = audioCallback(event.data, event.data.length, 0, 0)
@@ -182,6 +184,10 @@ self.onmessage = async (event) => {
             }
         }
         self.postMessage(event.data, [event.data.buffer])
+    } else if (event.data.command === "play") {
+        playing = true
+    } else if (event.data.command === "pause") {
+        playing = false
     } else {
         self.pyodide.globals.set("source", event.data)
         await self.pyodide.runPythonAsync("await run(source)")

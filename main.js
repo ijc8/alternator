@@ -7,11 +7,11 @@ async function main() {
     try {
         await new Promise(resolve => pyodideWorker.onmessage = resolve)
     } catch (err) {
-        codebox.button.classList.add("error")
+        codebox.runButton.classList.add("error")
         return
     }
-    codebox.button.classList.remove("loading")
-    codebox.button.disabled = false
+    codebox.runButton.classList.remove("loading")
+    codebox.runButton.disabled = false
     pyodideWorker.onmessage = handleMessageFromWorker
     resumeContextOnInteraction()
 }
@@ -105,9 +105,7 @@ async function runScript(script) {
 class CodeBox {
     constructor(container) {
         const editorContainer = document.createElement("div")
-        editorContainer.textContent = container.textContent.trim()
-        container.textContent = ""
-        container.appendChild(editorContainer)
+        container.prepend(editorContainer)
         this.editor = ace.edit(editorContainer, {
             maxLines: 30,
         });
@@ -119,12 +117,15 @@ class CodeBox {
             exec: () => this.run(),
         })
 
-        this.button = document.createElement("button")
-        this.button.classList.add("run")
-        this.button.classList.add("loading")
-        this.button.disabled = true
-        this.button.onclick = () => this.run()
-        container.appendChild(this.button)
+        this.runButton = container.querySelector("button.run")
+        this.runButton.classList.add("loading")
+        this.runButton.disabled = true
+        this.runButton.onclick = () => this.run()
+
+        this.playing = true
+        this.playButton = container.querySelector("button.play")
+        this.playButton.classList.add("playing")
+        this.playButton.onclick = () => this.togglePlay()
 
         this.output = document.createElement("div")
         this.output.classList.add("output")
@@ -133,16 +134,23 @@ class CodeBox {
 
     async run() {
         // Don't change the button state unless the computation takes at least 30ms.
-        for (const button of document.querySelectorAll(".runnable .run")) {
-            button.disabled = true
-        }
-        const timer = setTimeout(() => this.button.classList.add("running"), 30)
+        this.runButton.disabled = true
+        const timer = setTimeout(() => this.runButton.classList.add("running"), 30)
         this.output.innerText = ""
         await runScript(this.editor.getValue())
         clearTimeout(timer)
-        this.button.classList.remove("running")
-        for (const button of document.querySelectorAll(".runnable .run")) {
-            button.disabled = false
+        this.runButton.classList.remove("running")
+        this.runButton.disabled = false
+    }
+
+    togglePlay() {
+        this.playing = !this.playing
+        if (this.playing) {
+            this.playButton.classList.add("playing")
+            pyodideWorker.postMessage({ command: "play" })
+        } else {
+            this.playButton.classList.remove("playing")
+            pyodideWorker.postMessage({ command: "pause" })
         }
     }
 }
@@ -157,6 +165,7 @@ document.querySelectorAll(".preset").forEach((el, i) => {
     tabContainer.appendChild(button)
     button.onclick = () => selectTab(i)
     sessions.push(ace.createEditSession(el.textContent.trim(), "ace/mode/python"))
+    el.hidden = true
 })
 
 function selectTab(index) {

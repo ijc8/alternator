@@ -43,33 +43,62 @@ button:last-child {
     border-radius: 5px;
 }
 
-.runnable .run {
-    background-color: green;
-    color: white;
-    border: none;
-    width: 100%;
+.runnable .controls {
+    display: flex;
     height: 28px;
-    line-height: 16px;
-    vertical-align: middle;
 }
 
-.runnable .run:not(:disabled):hover {
+.runnable .controls * {
+    width: 50%;
+    color: white;
+    line-height: 12px;
+}
+
+.runnable .controls *:not(:disabled):hover {
     opacity: 90%;
 }
 
-.runnable .run:active {
+.runnable .controls *:active {
     opacity: 110% !important;
 }
 
-.runnable .run::before {
-    content: "▶\00a0\00a0";
-    font-size: 10px;
-    line-height: 16px;
+.runnable .run {
+    background-color: green;
+    border: none;
     vertical-align: middle;
+}
+
+.runnable .run::before {
+    content: "⚙\00a0";
+    font-size: 16px;
 }
 
 .runnable .run::after {
     content: "Run";
+}
+
+.runnable .play {
+    background-color: purple;
+}
+
+.runnable .play::before {
+    content: "▶\00a0\00a0";
+    font-size: 10px;
+    vertical-align: top;
+}
+
+.runnable .play::after {
+    content: "Play";
+}
+
+.runnable .play.playing::before {
+    content: "⏸\00a0\00a0";
+    font-size: 10px;
+    vertical-align: top;
+}
+
+.runnable .play.playing::after {
+    content: "Pause";
 }
 
 .runnable .run.loading {
