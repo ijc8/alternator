@@ -1,0 +1,179 @@
+<!doctype html>
+<html>
+    <head>
+        <script type="text/javascript">
+const audioContext = new AudioContext()
+
+const code = `
+let t = 0
+
+class CustomProcessor extends AudioWorkletProcessor {
+    constructor(options) {
+        super()
+        const blockSize = 1024
+        this.currentBuffer = new Float32Array(blockSize)
+        this.nextBuffer = new Float32Array(blockSize)
+        this.index = 0
+
+        // this.port.postMessage({ msg: "setup", sampleRate })
+
+        this.port.onmessage = (e) => {
+            console.log("Audio Worklet <- Web Worker:", e.data)
+            if (e.data.command === "process") {
+                this.nextBuffer = e.data.output
+            }
+        }
+    }
+
+    process(inputs, outputs, parameters) {
+        // const out = outputs[0][0]
+        // const numFrames = out.length
+        // for (let i = 0; i < numFrames; i++) {
+        //     out[i] = Math.sin(2*Math.PI*300*t)
+        //     t += 1 / sampleRate
+        // }
+        // return true
+
+        const output = outputs[0][0]
+        output.set(this.currentBuffer.subarray(this.index, this.index + output.length))
+        // NOTE: This assumes currentBuffer.length is a multiple of output.length (128).
+        this.index += output.length
+        if (this.index === this.currentBuffer.length) {
+            [this.currentBuffer, this.nextBuffer] = [this.nextBuffer, this.currentBuffer]
+            this.index = 0
+            this.port.postMessage({
+                msg: "process",
+                output: this.nextBuffer,
+            }, [this.nextBuffer.buffer])
+        }
+        return true
+    }
+}
+
+registerProcessor("foo", CustomProcessor);`
+
+function _workerCode() {
+    console.log("Hello")
+    let sampleRate
+    const freq = 300
+    let phase
+
+    function setup(_sampleRate, port) {
+        console.log("Setup")
+        sampleRate = _sampleRate
+        phase = 0
+        port.onmessage = (e) => {
+            console.log("Web Worker <- Audio Worklet:", e.data)
+            const length = process(e.data.output)
+            self.postMessage({ msg: "process", output: e.data.output, length }, [e.data.output.buffer])
+        }
+    }
+
+    function process(output) {
+        console.log("Process", output.length)
+        for (let i = 0; i < output.length; i++) {
+            output[i] = Math.sin(phase)
+            phase += 2*Math.PI*freq/sampleRate
+            phase %= 2*Math.PI
+        }
+        return output.length
+    }
+
+    self.onmessage = async (event) => {
+        if (event.data.msg === "setup") {
+            setup(event.data.sampleRate, event.data.port)
+        } else if (event.data.msg === "process") {
+            const length = process(event.data.output)
+            self.postMessage({ msg: "process", output: event.data.output, length }, [event.data.output.buffer])
+        }
+    }
+}
+
+let workerCode = _workerCode.toString()
+workerCode = workerCode.slice(workerCode.indexOf("{") + 1, workerCode.lastIndexOf("}"))
+
+const blob = new Blob([workerCode], { type: "application/javascript" })
+const worker = new Worker(URL.createObjectURL(blob))
+
+const wblob = new Blob([code], { type: "application/javascript" })
+const wurl = window.URL.createObjectURL(wblob)
+async function startAudioWorklet() {
+    await audioContext.audioWorklet.addModule(wurl)
+    const node = new AudioWorkletNode(audioContext, "foo", {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+    })
+    worker.postMessage({ msg: "setup", sampleRate: audioContext.sampleRate, port: node.port }, [node.port])
+    node.connect(audioContext.destination)
+}
+
+worker.onmessage = (e) => {
+    if (e.data.msg === "process") {
+        // console.log(e.data.length, e.data.output)
+        swapBuffers(e.data.output)
+    }
+}
+
+function resumeContextOnInteraction() {
+    // from https://github.com/captbaritone/winamp2-js/blob/a5a76f554c369637431fe809d16f3f7e06a21969/js/media/index.js#L8-L27
+    if (audioContext.state === "suspended") {
+        const resume = async () => {
+            await audioContext.resume()
+            if (audioContext.state === "running") {
+                document.body.removeEventListener("touchend", resume, false)
+                document.body.removeEventListener("click", resume, false)
+                document.body.removeEventListener("keydown", resume, false)
+            }
+            setupAudio()
+        }
+        document.body.addEventListener("touchend", resume, false)
+        document.body.addEventListener("click", resume, false)
+        document.body.addEventListener("keydown", resume, false)
+    } else {
+        setupAudio()
+    }
+}
+
+const blockSize = 1024
+const buffers = [new Float32Array(blockSize), new Float32Array(blockSize)]
+const promises = [null, null]
+let audioBuffers
+let nextBufferTime
+
+let i = 0
+
+async function swapBuffers(buffer) {
+    await promises[1-i]
+    worker.postMessage({ msg: "process", output: buffers[1-i] }, [buffers[1-i].buffer])
+    buffers[i] = buffer
+    audioBuffers[i].copyToChannel(buffer, 0)
+    const source = new AudioBufferSourceNode(audioContext, { buffer: audioBuffers[i] })
+    source.connect(audioContext.destination)
+    source.start(nextBufferTime)
+    promises[i] = new Promise(resolve => (source.onended = () => resolve()))
+    nextBufferTime += blockSize / audioContext.sampleRate
+    i = 1 - i
+}
+
+async function setupAudio() {
+    await audioContext.resume()
+    console.log("Sample rate", audioContext.sampleRate)
+    // worker.postMessage({ msg: "setup", sampleRate: audioContext.sampleRate })
+    audioBuffers = [
+        audioContext.createBuffer(1, blockSize, audioContext.sampleRate),
+        audioContext.createBuffer(1, blockSize, audioContext.sampleRate)
+    ]
+    nextBufferTime = audioContext.currentTime
+    // swapBuffers(buffers[i])
+    startAudioWorklet()
+}
+        </script>
+    </head>
+    <body>
+        Hello
+        <script type="text/javascript">
+resumeContextOnInteraction()
+        </script>
+    </body>
+</html>
