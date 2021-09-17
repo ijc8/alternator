@@ -4,111 +4,111 @@
         <script type="text/javascript">
 const audioContext = new AudioContext()
 
-const code = `
-let t = 0
+function audioWorkletCode() {
+    let t = 0
+    console.log("AudioWorklet: start")
 
-class CustomProcessor extends AudioWorkletProcessor {
-    constructor(options) {
-        super()
-        const blockSize = 1024
-        this.currentBuffer = new Float32Array(blockSize)
-        this.nextBuffer = new Float32Array(blockSize)
-        this.index = 0
-
-        // this.port.postMessage({ msg: "setup", sampleRate })
-
-        this.port.onmessage = (e) => {
-            console.log("Audio Worklet <- Web Worker:", e.data)
-            if (e.data.command === "process") {
-                this.nextBuffer = e.data.output
-            }
-        }
-    }
-
-    process(inputs, outputs, parameters) {
-        // const out = outputs[0][0]
-        // const numFrames = out.length
-        // for (let i = 0; i < numFrames; i++) {
-        //     out[i] = Math.sin(2*Math.PI*300*t)
-        //     t += 1 / sampleRate
-        // }
-        // return true
-
-        const output = outputs[0][0]
-        output.set(this.currentBuffer.subarray(this.index, this.index + output.length))
-        // NOTE: This assumes currentBuffer.length is a multiple of output.length (128).
-        this.index += output.length
-        if (this.index === this.currentBuffer.length) {
-            [this.currentBuffer, this.nextBuffer] = [this.nextBuffer, this.currentBuffer]
+    class CustomProcessor extends AudioWorkletProcessor {
+        constructor(options) {
+            console.log("AudioWorklet: constructor")
+            super()
+            const blockSize = 1024
+            this.currentBuffer = new Float32Array(blockSize)
+            this.nextBuffer = new Float32Array(blockSize)
             this.index = 0
-            this.port.postMessage({
-                msg: "process",
-                output: this.nextBuffer,
-            }, [this.nextBuffer.buffer])
+
+            this.port.onmessage = (e) => {
+                // console.log("Audio Worklet <- Web Worker:", e.data)
+                if (e.data.msg === "process") {
+                    this.nextBuffer = e.data.output
+                    this.nextBufferReady = true
+                }
+            }
+
+            this.nextBufferReady = true
         }
-        return true
+
+        process(inputs, outputs, parameters) {
+            // const out = outputs[0][0]
+            // const numFrames = out.length
+            // for (let i = 0; i < numFrames; i++) {
+            //     out[i] = Math.sin(2*Math.PI*300*t)
+            //     t += 1 / sampleRate
+            // }
+            // return true
+
+            const output = outputs[0][0]
+            if (this.index >= this.currentBuffer.length) {
+                // Currently in underrun.
+                console.log("Underrun!")
+                output.fill(0)
+            } else {
+                output.set(this.currentBuffer.subarray(this.index, this.index + output.length))
+            }
+            // NOTE: This assumes currentBuffer.length is a multiple of output.length (128).
+            this.index += output.length
+            if (this.index >= this.currentBuffer.length && this.nextBufferReady) {
+                [this.currentBuffer, this.nextBuffer] = [this.nextBuffer, this.currentBuffer]
+                this.index = 0
+                this.nextBufferReady = false
+                this.port.postMessage({
+                    msg: "process",
+                    output: this.nextBuffer,
+                }, [this.nextBuffer.buffer])
+            }
+            return true
+        }
     }
+
+    registerProcessor("foo", CustomProcessor)
 }
 
-registerProcessor("foo", CustomProcessor);`
-
-function _workerCode() {
-    console.log("Hello")
+function webWorkerCode() {
+    console.log("Web Worker: start")
     let sampleRate
     const freq = 300
     let phase
+    let port
 
-    function setup(_sampleRate, port) {
-        console.log("Setup")
+    function setup(_sampleRate, _port) {
+        console.log("Web Worker: setup")
         sampleRate = _sampleRate
         phase = 0
+        port = _port
         port.onmessage = (e) => {
-            console.log("Web Worker <- Audio Worklet:", e.data)
+            // console.log("Web Worker <- Audio Worklet:", e.data)
             const length = process(e.data.output)
-            self.postMessage({ msg: "process", output: e.data.output, length }, [e.data.output.buffer])
+            port.postMessage({ msg: "process", output: e.data.output, length }, [e.data.output.buffer])
         }
     }
 
     function process(output) {
-        console.log("Process", output.length)
         for (let i = 0; i < output.length; i++) {
             output[i] = Math.sin(phase)
             phase += 2*Math.PI*freq/sampleRate
+            // Uncomment for to force some underruns (at least in FF):
+            for (let j = 0; j < 16384; j++) {}
             phase %= 2*Math.PI
         }
         return output.length
     }
 
     self.onmessage = async (event) => {
-        if (event.data.msg === "setup") {
-            setup(event.data.sampleRate, event.data.port)
-        } else if (event.data.msg === "process") {
-            const length = process(event.data.output)
-            self.postMessage({ msg: "process", output: event.data.output, length }, [event.data.output.buffer])
-        }
+        // Receive sample rate and AudioWorklet's MessagePort from main thread.
+        setup(event.data.sampleRate, event.data.port)
     }
 }
 
-let workerCode = _workerCode.toString()
-workerCode = workerCode.slice(workerCode.indexOf("{") + 1, workerCode.lastIndexOf("}"))
-
-const blob = new Blob([workerCode], { type: "application/javascript" })
-const worker = new Worker(URL.createObjectURL(blob))
-
-const wblob = new Blob([code], { type: "application/javascript" })
-const wurl = window.URL.createObjectURL(wblob)
-async function startAudioWorklet() {
-    await audioContext.audioWorklet.addModule(wurl)
-    const node = new AudioWorkletNode(audioContext, "foo", {
-        numberOfInputs: 0,
-        numberOfOutputs: 1,
-        outputChannelCount: [1],
-    })
-    worker.postMessage({ msg: "setup", sampleRate: audioContext.sampleRate, port: node.port }, [node.port])
-    node.connect(audioContext.destination)
+function getBody(fn) {
+    const s = fn.toString()
+    return s.slice(s.indexOf("{") + 1, s.lastIndexOf("}"))
 }
 
-worker.onmessage = (e) => {
+const webWorker = new Worker(URL.createObjectURL(
+    new Blob([getBody(webWorkerCode)], { type: "application/javascript" })
+))
+
+webWorker.onmessage = (e) => {
     if (e.data.msg === "process") {
         // console.log(e.data.length, e.data.output)
         swapBuffers(e.data.output)
@@ -135,38 +135,19 @@ function resumeContextOnInteraction() {
     }
 }
 
-const blockSize = 1024
-const buffers = [new Float32Array(blockSize), new Float32Array(blockSize)]
-const promises = [null, null]
-let audioBuffers
-let nextBufferTime
-
-let i = 0
-
-async function swapBuffers(buffer) {
-    await promises[1-i]
-    worker.postMessage({ msg: "process", output: buffers[1-i] }, [buffers[1-i].buffer])
-    buffers[i] = buffer
-    audioBuffers[i].copyToChannel(buffer, 0)
-    const source = new AudioBufferSourceNode(audioContext, { buffer: audioBuffers[i] })
-    source.connect(audioContext.destination)
-    source.start(nextBufferTime)
-    promises[i] = new Promise(resolve => (source.onended = () => resolve()))
-    nextBufferTime += blockSize / audioContext.sampleRate
-    i = 1 - i
-}
-
 async function setupAudio() {
     await audioContext.resume()
-    console.log("Sample rate", audioContext.sampleRate)
-    // worker.postMessage({ msg: "setup", sampleRate: audioContext.sampleRate })
-    audioBuffers = [
-        audioContext.createBuffer(1, blockSize, audioContext.sampleRate),
-        audioContext.createBuffer(1, blockSize, audioContext.sampleRate)
-    ]
-    nextBufferTime = audioContext.currentTime
-    // swapBuffers(buffers[i])
-    startAudioWorklet()
+    console.log("Sample rate:", audioContext.sampleRate)
+    await audioContext.audioWorklet.addModule(window.URL.createObjectURL(
+        new Blob([getBody(audioWorkletCode)], { type: "application/javascript" })
+    ))
+    const audioWorklet = new AudioWorkletNode(audioContext, "foo", {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+    })
+    webWorker.postMessage({ sampleRate: audioContext.sampleRate, port: audioWorklet.port }, [audioWorklet.port])
+    audioWorklet.connect(audioContext.destination)
 }
         </script>
     </head>
