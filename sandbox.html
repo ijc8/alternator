@@ -5,97 +5,104 @@
 const audioContext = new AudioContext()
 
 function audioWorkletCode() {
-    let t = 0
     console.log("AudioWorklet: start")
 
-    class CustomProcessor extends AudioWorkletProcessor {
+    const BLOCK_SIZE = 1024
+
+    class DoubleBufferProcessor extends AudioWorkletProcessor {
         constructor(options) {
             console.log("AudioWorklet: constructor")
             super()
-            const blockSize = 1024
-            this.currentBuffer = new Float32Array(blockSize)
-            this.nextBuffer = new Float32Array(blockSize)
+            this.currentBuffer = new Float32Array(BLOCK_SIZE)
+            this.nextBuffer = new Float32Array(BLOCK_SIZE)
             this.index = 0
 
             this.port.onmessage = (e) => {
-                // console.log("Audio Worklet <- Web Worker:", e.data)
-                if (e.data.msg === "process") {
-                    this.nextBuffer = e.data.output
-                    this.nextBufferReady = true
-                }
+                this.nextBuffer = e.data
+                this.nextBufferReady = true
             }
 
-            this.nextBufferReady = true
+            this.swapBuffers()
+        }
+
+        swapBuffers() {
+            [this.currentBuffer, this.nextBuffer] = [this.nextBuffer, this.currentBuffer]
+            this.index = 0
+            this.nextBufferReady = false
+            // Send next buffer for the Web Worker to fill.
+            this.port.postMessage(this.nextBuffer, [this.nextBuffer.buffer])
         }
 
         process(inputs, outputs, parameters) {
-            // const out = outputs[0][0]
-            // const numFrames = out.length
-            // for (let i = 0; i < numFrames; i++) {
-            //     out[i] = Math.sin(2*Math.PI*300*t)
-            //     t += 1 / sampleRate
-            // }
-            // return true
-
             const output = outputs[0][0]
-            if (this.index >= this.currentBuffer.length) {
+            if (this.index >= BLOCK_SIZE) {
                 // Currently in underrun.
                 console.log("Underrun!")
                 output.fill(0)
             } else {
                 output.set(this.currentBuffer.subarray(this.index, this.index + output.length))
             }
-            // NOTE: This assumes currentBuffer.length is a multiple of output.length (128).
+            // NOTE: This assumes BLOCK_SIZE is a multiple of output.length (128).
             this.index += output.length
-            if (this.index >= this.currentBuffer.length && this.nextBufferReady) {
-                [this.currentBuffer, this.nextBuffer] = [this.nextBuffer, this.currentBuffer]
-                this.index = 0
-                this.nextBufferReady = false
-                this.port.postMessage({
-                    msg: "process",
-                    output: this.nextBuffer,
-                }, [this.nextBuffer.buffer])
+            if (this.index >= BLOCK_SIZE && this.nextBufferReady) {
+                this.swapBuffers()
             }
             return true
         }
     }
 
-    registerProcessor("foo", CustomProcessor)
+    registerProcessor("doublebuffer", DoubleBufferProcessor)
 }
 
 function webWorkerCode() {
     console.log("Web Worker: start")
-    let sampleRate
-    const freq = 300
-    let phase
     let port
 
-    function setup(_sampleRate, _port) {
+    self.onmessage = async (event) => {
+        // Receive sample rate and Audio Worklet's port from main thread.
         console.log("Web Worker: setup")
+        setup(event.data.sampleRate)
+        port = event.data.port
+        port.onmessage = (e) => {
+            // Received empty buffer from Audio Worklet. Fill with generated samples and send it back.
+            // Uncomment to force occasional underruns:
+            // for (let j = 0; j < (1 << 25); j++) {}
+            const length = process(e.data)
+            if (length < e.data.length) {
+                // `process` did not fill the buffer, indicating the end of the piece.
+                e.data.fill(0, length)
+                // Generate silence from here on out.
+                port.onmessage = (e) => {
+                    e.data.fill(0)
+                    port.postMessage(e.data, [e.data.buffer])
+                }
+            }
+            port.postMessage(e.data, [e.data.buffer])
+        }
+    }
+
+    // --- User (composer) code starts here ---
+    let sampleRate
+    const freq = 300  // Hz
+    const dur = 2.5   // seconds
+    let phase, remainingSamples
+
+    function setup(_sampleRate) {
         sampleRate = _sampleRate
         phase = 0
-        port = _port
-        port.onmessage = (e) => {
-            // console.log("Web Worker <- Audio Worklet:", e.data)
-            const length = process(e.data.output)
-            port.postMessage({ msg: "process", output: e.data.output, length }, [e.data.output.buffer])
-        }
+        remainingSamples = Math.floor(dur * sampleRate)
     }
 
     function process(output) {
-        for (let i = 0; i < output.length; i++) {
+        let i
+        const n = Math.min(remainingSamples, output.length)
+        for (i = 0; i < n; i++) {
             output[i] = Math.sin(phase)
             phase += 2*Math.PI*freq/sampleRate
-            // Uncomment for to force some underruns (at least in FF):
-            for (let j = 0; j < 16384; j++) {}
             phase %= 2*Math.PI
         }
-        return output.length
-    }
-
-    self.onmessage = async (event) => {
-        // Receive sample rate and AudioWorklet's MessagePort from main thread.
-        setup(event.data.sampleRate, event.data.port)
+        remainingSamples -= i
+        return i
     }
 }
 
@@ -107,13 +114,6 @@ function getBody(fn) {
 const webWorker = new Worker(URL.createObjectURL(
     new Blob([getBody(webWorkerCode)], { type: "application/javascript" })
 ))
-
-webWorker.onmessage = (e) => {
-    if (e.data.msg === "process") {
-        // console.log(e.data.length, e.data.output)
-        swapBuffers(e.data.output)
-    }
-}
 
 function resumeContextOnInteraction() {
     // from https://github.com/captbaritone/winamp2-js/blob/a5a76f554c369637431fe809d16f3f7e06a21969/js/media/index.js#L8-L27
@@ -141,11 +141,12 @@ async function setupAudio() {
     await audioContext.audioWorklet.addModule(window.URL.createObjectURL(
         new Blob([getBody(audioWorkletCode)], { type: "application/javascript" })
     ))
-    const audioWorklet = new AudioWorkletNode(audioContext, "foo", {
+    const audioWorklet = new AudioWorkletNode(audioContext, "doublebuffer", {
         numberOfInputs: 0,
         numberOfOutputs: 1,
         outputChannelCount: [1],
     })
+    // Send sample rate and Audio Worklet's port to the Web Worker, which will generate the samples as needed.
     webWorker.postMessage({ sampleRate: audioContext.sampleRate, port: audioWorklet.port }, [audioWorklet.port])
     audioWorklet.connect(audioContext.destination)
 }
