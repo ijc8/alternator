@@ -54,66 +54,20 @@ function audioWorkletCode() {
     registerProcessor("doublebuffer", DoubleBufferProcessor)
 }
 
-function webWorkerCode() {
-    console.log("Web Worker: start")
-    let port
+// function webWorkerCode() {
 
-    self.onmessage = async (event) => {
-        // Receive sample rate and Audio Worklet's port from main thread.
-        console.log("Web Worker: setup")
-        setup(event.data.sampleRate)
-        port = event.data.port
-        port.onmessage = (e) => {
-            // Received empty buffer from Audio Worklet. Fill with generated samples and send it back.
-            // Uncomment to force occasional underruns:
-            // for (let j = 0; j < (1 << 25); j++) {}
-            const length = process(e.data)
-            if (length < e.data.length) {
-                // `process` did not fill the buffer, indicating the end of the piece.
-                e.data.fill(0, length)
-                // Generate silence from here on out.
-                port.onmessage = (e) => {
-                    e.data.fill(0)
-                    port.postMessage(e.data, [e.data.buffer])
-                }
-            }
-            port.postMessage(e.data, [e.data.buffer])
-        }
-    }
-
-    // --- User (composer) code starts here ---
-    let sampleRate
-    const freq = 300  // Hz
-    const dur = 2.5   // seconds
-    let phase, remainingSamples
-
-    function setup(_sampleRate) {
-        sampleRate = _sampleRate
-        phase = 0
-        remainingSamples = Math.floor(dur * sampleRate)
-    }
-
-    function process(output) {
-        let i
-        const n = Math.min(remainingSamples, output.length)
-        for (i = 0; i < n; i++) {
-            output[i] = Math.sin(phase)
-            phase += 2*Math.PI*freq/sampleRate
-            phase %= 2*Math.PI
-        }
-        remainingSamples -= i
-        return i
-    }
-}
+// }
 
 function getBody(fn) {
     const s = fn.toString()
     return s.slice(s.indexOf("{") + 1, s.lastIndexOf("}"))
 }
 
-const webWorker = new Worker(URL.createObjectURL(
-    new Blob([getBody(webWorkerCode)], { type: "application/javascript" })
-))
+// const webWorker = new Worker(URL.createObjectURL(
+//     new Blob([getBody(webWorkerCode)], { type: "application/javascript" })
+// ))
+
+const webWorker = new Worker("worker2.js")
 
 function resumeContextOnInteraction() {
     // from https://github.com/captbaritone/winamp2-js/blob/a5a76f554c369637431fe809d16f3f7e06a21969/js/media/index.js#L8-L27
