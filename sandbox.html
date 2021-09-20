@@ -57,32 +57,6 @@ function audioWorkletCode() {
     registerProcessor("doublebuffer", DoubleBufferProcessor)
 }
 
-// function webWorkerCode() {
-//     --- User (composer) code starts here ---
-//     let sampleRate
-//     const freq = 300  // Hz
-//     const dur = 2.5   // seconds
-//     let phase, remainingSamples
-
-//     function setup(_sampleRate) {
-//         sampleRate = _sampleRate
-//         phase = 0
-//         remainingSamples = Math.floor(dur * sampleRate)
-//     }
-
-//     function _process(output) {
-//         let i
-//         const n = Math.min(remainingSamples, output.length)
-//         for (i = 0; i < n; i++) {
-//             output[i] = Math.sin(phase)
-//             phase += 2*Math.PI*freq/sampleRate
-//             phase %= 2*Math.PI
-//         }
-//         remainingSamples -= i
-//         return i
-//     }
-// }
-
 function getBody(fn) {
     const s = fn.toString()
     return s.slice(s.indexOf("{") + 1, s.lastIndexOf("}"))
@@ -114,27 +88,40 @@ function resumeContextOnInteraction() {
     }
 }
 
+let audioWorklet
+
 async function setupAudio() {
     await audioContext.resume()
     console.log("Sample rate:", audioContext.sampleRate)
     await audioContext.audioWorklet.addModule(window.URL.createObjectURL(
         new Blob([getBody(audioWorkletCode)], { type: "application/javascript" })
     ))
-    const audioWorklet = new AudioWorkletNode(audioContext, "doublebuffer", {
+    audioWorklet = new AudioWorkletNode(audioContext, "doublebuffer", {
         numberOfInputs: 0,
         numberOfOutputs: 1,
         outputChannelCount: [1],
     })
+}
+
+function play(name) {
     // Send sample rate and Audio Worklet's port to the Web Worker, which will generate the samples as needed.
-    webWorker.postMessage({ sampleRate: audioContext.sampleRate, port: audioWorklet.port }, [audioWorklet.port])
+    webWorker.postMessage({ name, sampleRate: audioContext.sampleRate, port: audioWorklet.port }, [audioWorklet.port])
     audioWorklet.connect(audioContext.destination)
 }
         </script>
     </head>
     <body>
-        Hello
+        <form>
+            <input type="text" placeholder="Composition name" />
+        </form>
         <script type="text/javascript">
 resumeContextOnInteraction()
+const formEl = document.querySelector("form")
+const nameEl = formEl.querySelector("input")
+formEl.onsubmit = (event) => {
+    event.preventDefault()
+    play(nameEl.value)
+}
         </script>
     </body>
 </html>
