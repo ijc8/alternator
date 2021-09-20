@@ -62,11 +62,7 @@ function getBody(fn) {
     return s.slice(s.indexOf("{") + 1, s.lastIndexOf("}"))
 }
 
-// const webWorker = new Worker(URL.createObjectURL(
-//     new Blob([getBody(webWorkerCode)], { type: "application/javascript" })
-// ))
-
-const webWorker = new Worker("worker2.js")
+const webWorker = new Worker("worker.js")
 
 function resumeContextOnInteraction() {
     // from https://github.com/captbaritone/winamp2-js/blob/a5a76f554c369637431fe809d16f3f7e06a21969/js/media/index.js#L8-L27

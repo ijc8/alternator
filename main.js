@@ -1,5 +1,5 @@
 // Create Web Worker to run Python code in a separate thread.
-const pyodideWorker = new Worker('worker.js')
+const pyodideWorker = new Worker('aleatora_worker.js')
 
 const audioContext = new AudioContext()
 
