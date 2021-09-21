@@ -2,9 +2,8 @@ let wasm
 const wasmPromise = loadWasm()
 
 async function loadWasm() {
-    const response = await fetch("compositions/rust/tune_bg.wasm")
-    const bytes = await response.arrayBuffer()
-    wasm = (await WebAssembly.instantiate(bytes)).instance.exports
+    const { instance } = await WebAssembly.instantiateStreaming(fetch("compositions/rust/tune_bg.wasm"))
+    wasm = instance.exports
 }
 
 /**
