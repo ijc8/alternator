@@ -13,7 +13,8 @@ self.onmessage = async (event) => {
     console.log("Web Worker: setup")
     port = event.data.port
     playSilence()
-    importScripts(`compositions/${event.data.name}.js`)
+    self.path = `bundles/${event.data.name}/`
+    importScripts(`${self.path}/main.js`)
     setup(event.data.sampleRate).then(() => {
         port.onmessage = (e) => {
             // Received empty buffer from Audio Worklet. Fill with generated samples and send it back.
