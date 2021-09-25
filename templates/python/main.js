@@ -8,10 +8,8 @@ async function setupPyodide() {
     self.pyodide.FS.mount(self.pyodide.FS.filesystems.WORKERFS, {
         packages: [{ metadata, blob }]
     }, "/alternator")
-    self.pyodide.runPython("import os; print(list(os.walk('/')))")
-    // NOTE: We intentionally avoid runPythonAsync here because we don't want this to pre-load extra modules like matplotlib.
-    self.pyodide.runPython(setupCode)
     // Aleatora setup
+    self.pyodide.runPython(setupCode)
     await self.pyodide.loadPackagesFromImports("import micropip")
     await self.pyodide.runPythonAsync(
         'import asyncio, micropip\n\
@@ -42,8 +40,6 @@ import aleatora.streams.audio
 aleatora.streams.audio.SAMPLE_RATE = ${sampleRate}
 import os
 os.chdir("alternator")
-print(os.getcwd())
-print(os.listdir("."))
 import sys
 sys.path.append(".")
 from main import main`)
