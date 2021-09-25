@@ -7,7 +7,7 @@ import tarfile
 if len(sys.argv) < 3:
     exit(f"Usage: {sys.argv[0]} platform directory")
 
-bundle_dir = os.path.join(os.path.dirname(sys.argv[0]), sys.argv[1])
+bundle_dir = os.path.join(os.path.dirname(sys.argv[0]), "bundlers", sys.argv[1])
 root = sys.argv[2]
 
 files = []
