@@ -7,7 +7,7 @@ import tarfile
 if len(sys.argv) < 3:
     exit(f"Usage: {sys.argv[0]} platform directory")
 
-bundle_dir = os.path.join(os.path.dirname(sys.argv[0]), "bundlers", sys.argv[1])
+bundle_dir = os.path.join(os.path.dirname(sys.argv[0]), "templates", sys.argv[1])
 root = sys.argv[2]
 
 files = []
@@ -41,7 +41,8 @@ metadata = json.dumps({
 with tarfile.open(os.path.basename(os.path.abspath(root)) + ".tar.xz", "w:xz") as archive:
     os.chdir(bundle_dir)
     archive.add("main.js")
-    archive.add("main.wasm")
+    if os.path.exists("main.wasm"):
+        archive.add("main.wasm")
     info = tarfile.TarInfo("bundle.data")
     info.size = position
     data.seek(0)
