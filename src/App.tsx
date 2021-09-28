@@ -6,9 +6,15 @@ import './App.css'
 const songs = [
     {
         name: "pd-thing",
-        title: "Tone",
-        album: "Tones (Deluxe Set): 20-20000 Hz",
-        duration: "0:05",
+        title: "Harmonic Thing (Pure Data)",
+        album: "Pretty Paltry Patches",
+        duration: "0:10",
+    },
+    {
+        name: "py-audio-file",
+        title: "Phasing (Aleatora)",
+        album: "Phasing: Greatest Hits (1964-2021)",
+        duration: "∞",
     }
 ]
 
@@ -82,7 +88,7 @@ const App = () => {
         <main className="flex-grow flex flex-col">
             <div className="pt-20 pl-16 pb-6 flex flex-row items-end bg-green-900">
                 <div className="w-60 h-60 border mr-8">
-                    Album image goes here!
+                    <img src="album_art.svg" alt="Album art" />
                 </div>
                 <div className="flex flex-col items-start">
                     <h1>Example album/playlist thing</h1>
