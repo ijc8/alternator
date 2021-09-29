@@ -46,24 +46,38 @@ async function play(name: string) {
     // Send sample rate and Audio Worklet's port to the Web Worker, which will generate the samples as needed.
     webWorker.postMessage({ name, sampleRate: audioContext.sampleRate, port: audioWorklet.port }, [audioWorklet.port])
     audioWorklet.connect(audioContext.destination)
-    return new Promise<void>(resolve => {
-        webWorker.onmessage = () => resolve()
+    return new Promise<{ end: Promise<void> }>(resolveSetup => {
+        webWorker.onmessage = () => {
+            resolveSetup({
+                end: new Promise<void>(resolveEnd => {
+                    webWorker.onmessage = () => resolveEnd()
+                })
+            })
+        }
     })
+}
+
+const LoadAnimation = () => {
+    return <svg xmlns="http://www.w3.org/2000/svg" xmlnsXlink="http://www.w3.org/1999/xlink" width="25px" viewBox="0 0 100 100">
+        <path fill="none" stroke="#00ccff" strokeWidth="8" strokeDasharray="42.76482137044271 42.76482137044271" d="M24.3 30C11.4 30 5 43.3 5 50s6.4 20 19.3 20c19.3 0 32.1-40 51.4-40 C88.6 30 95 43.3 95 50s-6.4 20-19.3 20C56.4 70 43.6 30 24.3 30z" strokeLinecap="butt">
+            <animate attributeName="stroke-dashoffset" repeatCount="indefinite" dur="1.2048192771084336s" keyTimes="0;1" values="0;256.58892822265625"></animate>
+        </path>
+    </svg>
 }
 
 const PlayAnimation = () => {
     return <>
     <style>
         {`#playing #inner {
-            animation: 1.5s linear 0s infinite normal none running propagate;
+            animation: 1s linear 0s infinite normal none running propagate;
         }
 
         #playing #middle {
-            animation: 1.5s linear 0.3s infinite normal none running propagate;
+            animation: 1s linear 0.25s infinite normal none running propagate;
         }
 
         #playing #outer {
-            animation: 1.5s linear 0.6s infinite normal none running propagate;
+            animation: 1s linear 0.5s infinite normal none running propagate;
         }
 
         @keyframes propagate {
@@ -95,10 +109,12 @@ const PlayAnimation = () => {
 
 }
 
+type PlayStatus = "setup" | "play" | "pause"
+
 const Track = ({
-    index, title, album, duration, state, setState,
+    index, title, album, duration, status, setPlaying,
 } : {
-    index: number, title: string, album: string, duration: string, state: boolean | null, setState: (p: boolean) => void,
+    index: number, title: string, album: string, duration: string, status: PlayStatus | null, setPlaying: (p: boolean) => void,
 }) => {
     const [hover, setHover] = useState(false)
 
@@ -110,17 +126,21 @@ const Track = ({
         setHover(false)
     }
 
-    const className = (state === null ? "" : "bg-gray-700 ") + "group-hover:bg-gray-600 p-4"
+    const className = (status === null ? "" : "bg-gray-700 ") + "group-hover:bg-gray-600 p-4"
+
+    console.log("status", status)
 
     return <div className="group contents" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
         <div className={className}>
-            {hover
-                ? state
-                    ? <BiPause className="text-2xl relative -left-1.5" onClick={() => setState(false)} />
-                    : <BiPlay className="text-2xl relative -left-1.5" onClick={() => setState(true)} />
-                : state
-                    ? <div className="relative -left-2 top-0.5"><PlayAnimation /></div>
-                    : index + 1}
+            {status === "setup"
+                ? <div className="relative -left-2"><LoadAnimation /></div>
+                : hover
+                    ? status === "play"
+                        ? <BiPause className="text-2xl relative -left-1.5" onClick={() => setPlaying(false)} />
+                        : <BiPlay className="text-2xl relative -left-1.5" onClick={() => setPlaying(true)} />
+                    : status === "play"
+                        ? <div className="relative -left-2 top-0.5"><PlayAnimation /></div>
+                        : index + 1}
         </div>
         <div className={className}>{title}</div>
         <div className={className}>{album}</div>
@@ -130,21 +150,23 @@ const Track = ({
 
 interface PlayState {
     name: string
-    playing: boolean
+    status: PlayStatus
 }
 
 const App = () => {
     const [state, _setState] = useState<PlayState | null>(null)
 
-    const setState = (newState: PlayState) => {
+    const setState = async (newState: PlayState) => {
         if (state?.name !== newState.name) {
-            play(newState.name).then(() => {
-                _setState(null)
-            })
+            _setState({ name: newState.name, status: "setup" })
+            const end = (await play(newState.name)).end
+            _setState({ name: newState.name, status: "play" });
+            await end
+            _setState(null)
         } else {
-            webWorker.postMessage(newState.playing)
+            webWorker.postMessage(newState.status === "play")
+            _setState(newState)
         }
-        _setState(newState)
     }
 
     return <div className="flex flex-row text-white">
@@ -174,10 +196,10 @@ const App = () => {
                         <div className="px-4">Duration</div>
                     </div>
                     <div className="col-span-full border-b border-gray-700 mb-2"></div>
-                    {songs.map(({ name, ...song }, i) => <Track key={i} index={i} {...song} state={state?.name === name ? state.playing : null} setState={(playing: boolean) => {
+                    {songs.map(({ name, ...song }, i) => <Track key={i} index={i} {...song} status={state?.name === name ? state.status : null} setPlaying={(playing: boolean) => {
                         setState({
                             name,
-                            playing,
+                            status: playing ? "play" : "pause",
                         })
                     }} />)}
                 </div>

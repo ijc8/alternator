@@ -18,7 +18,7 @@ function playAudio() {
             // `process` did not fill the buffer, indicating the end of the piece.
             e.data.fill(0, length)
             playSilence()
-            self.postMessage(null)
+            self.postMessage("end")
         }
         port.postMessage(e.data, [e.data.buffer])
     }
@@ -39,5 +39,8 @@ self.onmessage = async (event) => {
     }
     self.path = `bundles/${event.data.name}/`
     importScripts(`${self.path}/main.js`)
-    setup(event.data.sampleRate).then(playAudio)
+    setup(event.data.sampleRate).then(() => {
+        self.postMessage("setup")
+        playAudio()
+    })
 }
