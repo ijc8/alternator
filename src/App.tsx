@@ -51,19 +51,15 @@ async function play(name: string) {
 const PlayAnimation = () => {
     return <>
     <style>
-        {`svg {
-            fill: #0a0;
-        }
-
-        svg #inner {
+        {`#playing #inner {
             animation: 1s linear 0s infinite normal none running propagate;
         }
 
-        svg #middle {
+        #playing #middle {
             animation: 1s linear 0.25s infinite normal none running propagate;
         }
 
-        svg #outer {
+        #playing #outer {
             animation: 1s linear 0.50s infinite normal none running propagate;
         }
 
@@ -72,12 +68,12 @@ const PlayAnimation = () => {
                 fill: #fff
             }
 
-            20%, 80% {
+            30%, 70% {
                 fill: #888
             }
         }`}
     </style>
-    <svg width="8mm" viewBox="0 0 15.65 9.69" xmlns="http://www.w3.org/2000/svg">
+    <svg id="playing" fill="#0cf" width="8mm" viewBox="0 0 15.65 9.69" xmlns="http://www.w3.org/2000/svg">
         <g transform="translate(-2.67)">
             <path d="m10.7 3.02 1.48 3.96h-.56l-.9-2.37-1.1 2.37h-.57l1.41-3.08-.2-.57q-.14-.36-.45-.36h-.28v-.45h.34q.65.01.83.5z" />
             <g id="inner">
