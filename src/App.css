@@ -39,6 +39,10 @@ h1 {
   font-size: 3em;
 }
 
+#logo {
+  font-family: "Recursive";
+}
+
 /* https://codepen.io/heij/embed/oNbvBLJ?height=600&theme-id=24057&default-tab=result#result-box */
 #logo > * {
   position: absolute;
