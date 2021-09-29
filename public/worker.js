@@ -18,6 +18,7 @@ function playAudio() {
             // `process` did not fill the buffer, indicating the end of the piece.
             e.data.fill(0, length)
             playSilence()
+            self.postMessage(null)
         }
         port.postMessage(e.data, [e.data.buffer])
     }

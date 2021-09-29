@@ -46,21 +46,24 @@ async function play(name: string) {
     // Send sample rate and Audio Worklet's port to the Web Worker, which will generate the samples as needed.
     webWorker.postMessage({ name, sampleRate: audioContext.sampleRate, port: audioWorklet.port }, [audioWorklet.port])
     audioWorklet.connect(audioContext.destination)
+    return new Promise<void>(resolve => {
+        webWorker.onmessage = () => resolve()
+    })
 }
 
 const PlayAnimation = () => {
     return <>
     <style>
         {`#playing #inner {
-            animation: 1s linear 0s infinite normal none running propagate;
+            animation: 1.5s linear 0s infinite normal none running propagate;
         }
 
         #playing #middle {
-            animation: 1s linear 0.25s infinite normal none running propagate;
+            animation: 1.5s linear 0.3s infinite normal none running propagate;
         }
 
         #playing #outer {
-            animation: 1s linear 0.50s infinite normal none running propagate;
+            animation: 1.5s linear 0.6s infinite normal none running propagate;
         }
 
         @keyframes propagate {
@@ -135,7 +138,9 @@ const App = () => {
 
     const setState = (newState: PlayState) => {
         if (state?.name !== newState.name) {
-            play(newState.name)
+            play(newState.name).then(() => {
+                _setState(null)
+            })
         } else {
             webWorker.postMessage(newState.playing)
         }
