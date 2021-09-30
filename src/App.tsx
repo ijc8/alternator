@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useState } from 'react'
 import { BiPlay, BiPause, BiRewind, BiFastForward, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
 import logo from './logo.svg'
 import './App.css'
@@ -13,7 +13,14 @@ const tracks = [
     },
     {
         name: "py-audio-file",
-        title: "Phasing (Aleatora)",
+        title: "Vocal Phasing (Aleatora)",
+        artist: "Ian Clester",
+        album: "Phasing: Greatest Hits (1964-2021)",
+        duration: "∞",
+    },
+    {
+        name: "py-piano-phase",
+        title: "Piano(?) Phase (Aleatora)",
         artist: "Ian Clester",
         album: "Phasing: Greatest Hits (1964-2021)",
         duration: "∞",
