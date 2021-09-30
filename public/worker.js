@@ -1,5 +1,6 @@
 console.log("Web Worker: start")
 let port
+let pos = 0
 
 function playSilence() {
     port.onmessage = (e) => {
@@ -19,6 +20,9 @@ function playAudio() {
             e.data.fill(0, length)
             playSilence()
             self.postMessage("end")
+        } else {
+            pos += length
+            self.postMessage(pos)
         }
         port.postMessage(e.data, [e.data.buffer])
     }

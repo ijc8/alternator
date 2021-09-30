@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { BiPlay, BiPause, BiRewind, BiFastForward, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
 import logo from './logo.svg'
 import './App.css'
@@ -33,6 +33,8 @@ async function setupAudio() {
     setupDone = true
 }
 
+let pos = 0
+
 async function play(name: string) {
     if (!setupDone) {
         await setupAudio()
@@ -52,7 +54,13 @@ async function play(name: string) {
         webWorker.onmessage = () => {
             resolveSetup({
                 end: new Promise<void>(resolveEnd => {
-                    webWorker.onmessage = () => resolveEnd()
+                    webWorker.onmessage = (event) => {
+                        if (event.data === "end") {
+                            resolveEnd()
+                        } else {
+                            _setPos(Math.floor(event.data / audioContext.sampleRate))
+                        }
+                    }
                 })
             })
         }
@@ -128,8 +136,6 @@ const Track = ({
         setHover(false)
     }
 
-    console.log("status", status)
-
     return <div className={(status === null ? "" : "bg-gray-700 ") + "flex items-center hover:bg-gray-600 px-4 py-2"} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
         <div className="w-1/4">
             {status === "setup"
@@ -166,9 +172,25 @@ const Sidebar = () => {
     </header>
 }
 
+let _setPos = (pos: number) => {}
+
+function formatTime(seconds: number) {
+    seconds = Math.floor(seconds)
+    let minutes = Math.floor(seconds / 60)
+    seconds -= minutes * 60
+    const hours = Math.floor(minutes / 60)
+    if (hours === 0) {
+        return `${minutes}:${seconds.toString().padStart(2, "0")}`
+    }
+    minutes -= hours * 60
+    return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
+}
+
 const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: (b: boolean) => void }) => {
     const track = tracks.find(track => track.name === state?.name)
     const disabled = state === null || state.status ===  "setup"
+    const [pos, setPos] = useState(0)
+    _setPos = setPos
 
     return <footer className="bg-gray-900 flex items-center px-4 py-6">
         <div className="w-1/3">
@@ -178,7 +200,7 @@ const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: 
             </>}
         </div>
         <div className="w-1/3">
-            <div className="flex justify-center pb-2 text-3xl">
+            <div className="flex justify-center text-3xl">
                 <button disabled={disabled} className="disabled:text-gray-500"><BiRewind /></button>
                 <button disabled={disabled} className="disabled:text-gray-500 text-4xl">
                     {state?.status === "play"
@@ -187,7 +209,10 @@ const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: 
                 </button>
                 <button disabled={disabled} className="disabled:text-gray-500"><BiFastForward /></button>
             </div>
-            <div className="bg-cyan-500 w-full h-1"></div>
+            <div className="flex items-center text-gray-400 text-sm">
+                {formatTime(pos)}
+                <div className="ml-2 bg-cyan-500 w-full h-1"></div>
+            </div>
         </div>
         <div className="w-1/3 flex justify-end items-center">
             <BiVolumeFull className="text-gray-400 mr-2" />
