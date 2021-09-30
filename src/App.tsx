@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { BiPlay, BiPause } from 'react-icons/bi'
+import { BiPlay, BiPause, BiRewind, BiFastForward, BiPlayCircle, BiVolumeFull } from 'react-icons/bi'
 import logo from './logo.svg'
 import './App.css'
 
@@ -169,42 +169,62 @@ const App = () => {
         }
     }
 
-    return <div className="flex flex-row text-white">
-        <header className="App-header min-h-screen w-56 bg-black">
-            <div className="flex flex-row">
-                <div className="glitch flex-grow relative top-6" id="logo">
-                    {[...new Array(5)].map((_, i) => <div key={i}>Alternator</div>)}
-                </div>
-            </div>
-        </header>
-        <main className="flex-grow flex flex-col">
-            <div className="pt-20 pl-16 pb-6 flex flex-row items-end bg-green-900">
-                <div className="w-60 h-60 border mr-8">
-                    <img src="album_art.svg" alt="Album art" />
-                </div>
-                <div className="flex flex-col items-start">
-                    <h1>Example album/playlist thing</h1>
-                    <h2>Ian Clester</h2>
-                </div>
-            </div>
-            <div className="p-16 pt-4 flex-grow bg-gray-800">
-                <div className="grid grid-cols-4">
-                    <div className="contents text-gray-400">
-                        <div className="px-4">#</div>
-                        <div className="px-4">Title</div>
-                        <div className="px-4">Album</div>
-                        <div className="px-4">Duration</div>
+    return <div className="flex flex-col text-white min-h-screen justify-end">
+        <div className="flex flex-row flex-grow">
+            <header className="App-header w-56 bg-black">
+                <div className="flex flex-row">
+                    <div className="glitch flex-grow relative top-6" id="logo">
+                        {[...new Array(5)].map((_, i) => <div key={i}>Alternator</div>)}
                     </div>
-                    <div className="col-span-full border-b border-gray-700 mb-2"></div>
-                    {songs.map(({ name, ...song }, i) => <Track key={i} index={i} {...song} status={state?.name === name ? state.status : null} setPlaying={(playing: boolean) => {
-                        setState({
-                            name,
-                            status: playing ? "play" : "pause",
-                        })
-                    }} />)}
                 </div>
+            </header>
+            <main className="flex-grow flex flex-col">
+                <div className="pt-20 pl-16 pb-6 flex flex-row items-end bg-green-900">
+                    <div className="w-60 h-60 border mr-8">
+                        <img src="album_art.svg" alt="Album art" />
+                    </div>
+                    <div className="flex flex-col items-start">
+                        <h1>Example album/playlist thing</h1>
+                        <h2>Ian Clester</h2>
+                    </div>
+                </div>
+                <div className="p-16 pt-4 flex-grow bg-gray-800">
+                    <div className="grid grid-cols-4">
+                        <div className="contents text-gray-400">
+                            <div className="px-4">#</div>
+                            <div className="px-4">Title</div>
+                            <div className="px-4">Album</div>
+                            <div className="px-4">Duration</div>
+                        </div>
+                        <div className="col-span-full border-b border-gray-700 mb-2"></div>
+                        {songs.map(({ name, ...song }, i) => <Track key={i} index={i} {...song} status={state?.name === name ? state.status : null} setPlaying={(playing: boolean) => {
+                            setState({
+                                name,
+                                status: playing ? "play" : "pause",
+                            })
+                        }} />)}
+                    </div>
+                </div>
+            </main>
+        </div>
+        <footer className="bg-gray-900 flex items-center px-4 py-6">
+            <div className="flex-grow">
+                <div>Current track name</div>
+                <div className="text-gray-400 text-sm">Current artist name</div>
             </div>
-        </main>
+            <div className="w-1/3">
+                <div className="flex justify-center pb-2 text-4xl">
+                    <button className="text-3xl"><BiRewind /></button>
+                    <button><BiPlayCircle /></button>
+                    <button className="text-3xl"><BiFastForward /></button>
+                </div>
+                <div className="bg-cyan-500 w-full h-1"></div>
+            </div>
+            <div className="flex-grow flex justify-end items-center">
+                <BiVolumeFull className="text-gray-400 mr-2" />
+                <div className="bg-gray-500 w-32 h-1"></div>
+            </div>
+        </footer>
     </div>
 }
 
