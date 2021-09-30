@@ -1,18 +1,20 @@
 import React, { useState } from 'react'
-import { BiPlay, BiPause, BiRewind, BiFastForward, BiPlayCircle, BiVolumeFull } from 'react-icons/bi'
+import { BiPlay, BiPause, BiRewind, BiFastForward, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
 import logo from './logo.svg'
 import './App.css'
 
-const songs = [
+const tracks = [
     {
         name: "pd-thing",
         title: "Harmonic Thing (Pure Data)",
+        artist: "Ian Clester",
         album: "Pretty Paltry Patches",
         duration: "0:10",
     },
     {
         name: "py-audio-file",
         title: "Phasing (Aleatora)",
+        artist: "Ian Clester",
         album: "Phasing: Greatest Hits (1964-2021)",
         duration: "∞",
     }
@@ -112,9 +114,9 @@ const PlayAnimation = () => {
 type PlayStatus = "setup" | "play" | "pause"
 
 const Track = ({
-    index, title, album, duration, status, setPlaying,
+    index, title, artist, album, duration, status, setPlaying,
 } : {
-    index: number, title: string, album: string, duration: string, status: PlayStatus | null, setPlaying: (p: boolean) => void,
+    index: number, title: string, artist: string, album: string, duration: string, status: PlayStatus | null, setPlaying: (p: boolean) => void,
 }) => {
     const [hover, setHover] = useState(false)
 
@@ -126,12 +128,10 @@ const Track = ({
         setHover(false)
     }
 
-    const className = (status === null ? "" : "bg-gray-700 ") + "group-hover:bg-gray-600 p-4"
-
     console.log("status", status)
 
-    return <div className="group contents" onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-        <div className={className}>
+    return <div className={(status === null ? "" : "bg-gray-700 ") + "flex items-center hover:bg-gray-600 px-4 py-2"} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+        <div className="w-1/4">
             {status === "setup"
                 ? <div className="relative -left-2"><LoadAnimation /></div>
                 : hover
@@ -142,15 +142,58 @@ const Track = ({
                         ? <div className="relative -left-2 top-0.5"><PlayAnimation /></div>
                         : index + 1}
         </div>
-        <div className={className}>{title}</div>
-        <div className={className}>{album}</div>
-        <div className={className}>{duration}</div>
+        <div className="w-1/4">
+            {title}
+            <div className="text-gray-400 text-sm">{artist}</div>
+        </div>
+        <div className="w-1/4">{album}</div>
+        <div className="w-1/4">{duration}</div>
     </div>
 }
 
 interface PlayState {
     name: string
     status: PlayStatus
+}
+
+const Sidebar = () => {
+    return <header className="App-header w-56 bg-black">
+        <div className="flex flex-row">
+            <div className="glitch flex-grow relative top-6" id="logo">
+                {[...new Array(5)].map((_, i) => <div key={i}>Alternator</div>)}
+            </div>
+        </div>
+    </header>
+}
+
+const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: (b: boolean) => void }) => {
+    const track = tracks.find(track => track.name === state?.name)
+    const disabled = state === null || state.status ===  "setup"
+
+    return <footer className="bg-gray-900 flex items-center px-4 py-6">
+        <div className="w-1/3">
+            {track && <>
+                <div>{track.title}</div>
+                <div className="text-gray-400 text-sm">{track.artist}</div>
+            </>}
+        </div>
+        <div className="w-1/3">
+            <div className="flex justify-center pb-2 text-3xl">
+                <button disabled={disabled} className="disabled:text-gray-500"><BiRewind /></button>
+                <button disabled={disabled} className="disabled:text-gray-500 text-4xl">
+                    {state?.status === "play"
+                        ? <BiPauseCircle onClick={() => setPlaying(false)} />
+                        : <BiPlayCircle onClick={() => setPlaying(true)} />}
+                </button>
+                <button disabled={disabled} className="disabled:text-gray-500"><BiFastForward /></button>
+            </div>
+            <div className="bg-cyan-500 w-full h-1"></div>
+        </div>
+        <div className="w-1/3 flex justify-end items-center">
+            <BiVolumeFull className="text-gray-400 mr-2" />
+            <div className="bg-gray-500 w-32 h-1"></div>
+        </div>
+    </footer>
 }
 
 const App = () => {
@@ -171,13 +214,7 @@ const App = () => {
 
     return <div className="flex flex-col text-white min-h-screen justify-end">
         <div className="flex flex-row flex-grow">
-            <header className="App-header w-56 bg-black">
-                <div className="flex flex-row">
-                    <div className="glitch flex-grow relative top-6" id="logo">
-                        {[...new Array(5)].map((_, i) => <div key={i}>Alternator</div>)}
-                    </div>
-                </div>
-            </header>
+            <Sidebar />
             <main className="flex-grow flex flex-col">
                 <div className="pt-20 pl-16 pb-6 flex flex-row items-end bg-green-900">
                     <div className="w-60 h-60 border mr-8">
@@ -189,15 +226,15 @@ const App = () => {
                     </div>
                 </div>
                 <div className="p-16 pt-4 flex-grow bg-gray-800">
-                    <div className="grid grid-cols-4">
-                        <div className="contents text-gray-400">
-                            <div className="px-4">#</div>
-                            <div className="px-4">Title</div>
-                            <div className="px-4">Album</div>
-                            <div className="px-4">Duration</div>
+                    <div className="flex flex-col">
+                        <div className="flex text-gray-400 px-4">
+                            <div className="w-1/4">#</div>
+                            <div className="w-1/4">Title</div>
+                            <div className="w-1/4">Album</div>
+                            <div className="w-1/4">Duration</div>
                         </div>
                         <div className="col-span-full border-b border-gray-700 mb-2"></div>
-                        {songs.map(({ name, ...song }, i) => <Track key={i} index={i} {...song} status={state?.name === name ? state.status : null} setPlaying={(playing: boolean) => {
+                        {tracks.map(({ name, ...song }, i) => <Track key={i} index={i} {...song} status={state?.name === name ? state.status : null} setPlaying={(playing: boolean) => {
                             setState({
                                 name,
                                 status: playing ? "play" : "pause",
@@ -207,24 +244,12 @@ const App = () => {
                 </div>
             </main>
         </div>
-        <footer className="bg-gray-900 flex items-center px-4 py-6">
-            <div className="flex-grow">
-                <div>Current track name</div>
-                <div className="text-gray-400 text-sm">Current artist name</div>
-            </div>
-            <div className="w-1/3">
-                <div className="flex justify-center pb-2 text-4xl">
-                    <button className="text-3xl"><BiRewind /></button>
-                    <button><BiPlayCircle /></button>
-                    <button className="text-3xl"><BiFastForward /></button>
-                </div>
-                <div className="bg-cyan-500 w-full h-1"></div>
-            </div>
-            <div className="flex-grow flex justify-end items-center">
-                <BiVolumeFull className="text-gray-400 mr-2" />
-                <div className="bg-gray-500 w-32 h-1"></div>
-            </div>
-        </footer>
+        <Controls state={state} setPlaying={(playing: boolean) => {
+            setState({
+                name: state!.name,
+                status: playing ? "play" : "pause",
+            })
+        }} />
     </div>
 }
 
