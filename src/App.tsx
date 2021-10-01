@@ -253,6 +253,7 @@ const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: 
                     {duration && <div className="w-full flex relative">
                         <div className="absolute w-full h-1 bg-gradient-split" style={{
                               backgroundSize: "12px 4px",
+                              backgroundPosition: `${Math.max(pos, length) / duration * 100}%`
                         }} />
                         <div className="bg-gray-500 h-1 relative" style={{ width: `${length / duration * 100}%` }}>
                             {duration && <>
