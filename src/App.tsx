@@ -166,9 +166,9 @@ interface PlayState {
 }
 
 const Sidebar = () => {
-    return <header className="App-header w-56 bg-black">
+    return <header className="w-56 bg-black text-3xl">
         <div className="flex flex-row">
-            <div className="glitch flex-grow relative top-6" id="logo">
+            <div className="glitch flex-grow relative top-8" id="logo">
                 {[...new Array(5)].map((_, i) => <div key={i}>Alternator</div>)}
             </div>
         </div>
@@ -266,10 +266,10 @@ const App = () => {
         }
     }
 
-    return <div className="flex flex-col text-white min-h-screen justify-end">
-        <div className="flex flex-row flex-grow">
+    return <div className="flex flex-col text-white min-h-screen max-h-screen justify-end">
+        <div className="flex flex-row flex-grow min-h-0">
             <Sidebar />
-            <main className="flex-grow flex flex-col">
+            <main className="flex-grow flex flex-col overflow-y-auto">
                 <div className="pt-20 pl-16 pb-6 flex flex-row items-end bg-green-900">
                     <div className="w-60 h-60 border mr-8">
                         <img src="album_art.svg" alt="Album art" />
