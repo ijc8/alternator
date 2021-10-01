@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react'
-import { BiPlay, BiPause, BiRewind, BiFastForward, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
+import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
 import './App.css'
 
 const tracks = [
@@ -8,21 +8,21 @@ const tracks = [
         title: "Harmonic Thing (Pure Data)",
         artist: "Ian Clester",
         album: "Pretty Paltry Patches",
-        duration: "0:10",
+        duration: 10,
     },
     {
         name: "py-audio-file",
         title: "Vocal Phasing (Aleatora)",
         artist: "Ian Clester",
         album: "Phasing: Greatest Hits (1964-2021)",
-        duration: "∞",
+        duration: Infinity,
     },
     {
         name: "py-piano-phase",
         title: "Piano(?) Phase (Aleatora)",
         artist: "Ian Clester",
         album: "Phasing: Greatest Hits (1964-2021)",
-        duration: "∞",
+        duration: Infinity,
     }
 ]
 
@@ -127,7 +127,7 @@ type PlayStatus = "setup" | "play" | "pause"
 const Track = ({
     index, title, artist, album, duration, status, setPlaying,
 } : {
-    index: number, title: string, artist: string, album: string, duration: string, status: PlayStatus | null, setPlaying: (p: boolean) => void,
+    index: number, title: string, artist: string, album: string, duration: number, status: PlayStatus | null, setPlaying: (p: boolean) => void,
 }) => {
     const [hover, setHover] = useState(false)
 
@@ -156,7 +156,7 @@ const Track = ({
             <div className="text-gray-400 text-sm">{artist}</div>
         </div>
         <div className="w-1/4">{album}</div>
-        <div className="w-1/4">{duration}</div>
+        <div className="w-1/4">{formatTime(duration)}</div>
     </div>
 }
 
@@ -178,6 +178,9 @@ const Sidebar = () => {
 let _setInfo = ({ pos, length }: { pos: number, length: number }) => {}
 
 function formatTime(seconds: number) {
+    if (seconds === Infinity) {
+        return "∞"
+    }
     seconds = Math.floor(seconds)
     let minutes = Math.floor(seconds / 60)
     seconds -= minutes * 60
@@ -194,15 +197,18 @@ const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: 
     const disabled = state === null || state.status ===  "setup"
     const seekBar = useRef<HTMLDivElement>(null)
     const [{ pos, length }, setInfo] = useState({ pos: 0, length: 0 })
+    const duration = track && (track.duration === Infinity
+        ? length + 10 * audioContext.sampleRate
+        : track.duration * audioContext.sampleRate)
     _setInfo = setInfo
 
     const seek = (event: MouseEvent | React.MouseEvent) => {
-        if (!seekBar.current || !state) {
+        if (!seekBar.current || !state || !duration) {
             return
         }
         const el = seekBar.current!
         const frac = (event.clientX - el.offsetLeft) / el.clientWidth
-        webWorker.postMessage(Math.round(length * Math.max(0, Math.min(frac, 1))))
+        webWorker.postMessage(Math.round(duration * Math.max(0, Math.min(frac, 1))))
     }
 
     return <footer className="bg-gray-900 flex justify-between items-center px-4 py-6">
@@ -214,16 +220,16 @@ const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: 
         </div>
         <div className="w-5/12">
             <div className="flex justify-center text-3xl">
-                <button disabled={disabled} className="disabled:text-gray-500"><BiRewind /></button>
+                <button disabled={disabled} className="disabled:text-gray-500"><BiSkipPrevious /></button>
                 <button disabled={disabled} className="disabled:text-gray-500 text-4xl">
                     {state?.status === "play"
                         ? <BiPauseCircle onClick={() => setPlaying(false)} />
                         : <BiPlayCircle onClick={() => setPlaying(true)} />}
                 </button>
-                <button disabled={disabled} className="disabled:text-gray-500"><BiFastForward /></button>
+                <button disabled={disabled} className="disabled:text-gray-500"><BiSkipNext /></button>
             </div>
             <div className="flex justify-between items-center text-gray-400 text-sm select-none">
-                <div className="text-right w-12">{formatTime(Math.floor(pos / audioContext.sampleRate))}</div>
+                {duration && <div className="text-right w-12">{formatTime(Math.floor(pos / audioContext.sampleRate))}</div>}
                 <div ref={seekBar} className="group mx-2 py-2 w-full" onClick={seek} onMouseDown={(e) => {
                     const release = () => {
                         document.removeEventListener("mousemove", seek)
@@ -232,15 +238,20 @@ const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: 
                     document.addEventListener("mousemove", seek)
                     document.addEventListener("mouseup", release)
                 }}>
-                    <div className="bg-gray-500 w-full h-1 relative">
-                        {state && <>
-                            <div className="bg-cyan-500 h-1" style={{ width: `${pos / length * 100}%` }} />
-                            <div className="hidden group-hover:block absolute top-0 transform -translate-x-1/2 -translate-y-1/4 rounded-full w-2 h-2 bg-white"
-                                style={{ left: `${pos / length * 100}%` }} />
-                        </>}
-                    </div>
+                    {duration && <div className="w-full flex relative">
+                        <div className="absolute w-full h-1 bg-gradient-split" style={{
+                              backgroundSize: "12px 4px",
+                        }} />
+                        <div className="bg-gray-500 h-1 relative" style={{ width: `${length / duration * 100}%` }}>
+                            {duration && <>
+                                <div className="bg-cyan-500 h-1" style={{ width: `${pos / length * 100}%` }} />
+                                <div className="hidden group-hover:block absolute top-0 transform -translate-x-1/2 -translate-y-1/4 rounded-full w-2 h-2 bg-white"
+                                    style={{ left: `${pos / length * 100}%` }} />
+                            </>}
+                        </div>
+                    </div>}
                 </div>
-                <div className="w-12">{formatTime(Math.floor(length / audioContext.sampleRate))}</div>
+                {duration && <div className="w-12">{formatTime(Math.floor(duration / audioContext.sampleRate))}</div>}
             </div>
         </div>
         <div className="w-1/4 flex justify-end items-center">
