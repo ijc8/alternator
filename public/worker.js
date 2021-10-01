@@ -24,11 +24,14 @@ function playAudio() {
 
         // TODO: Use `buffer` as a circular buffer, in case we hit `HISTORY_SECONDS`.
         const blockLength = e.data.length
-        if (pos + blockLength > currentLength) {
+        while (pos + blockLength > currentLength) {
             const length = process(buffer.subarray(currentLength, currentLength + blockLength))
             currentLength += length
             if (length < blockLength) {
                 fullLength = currentLength
+                break
+            } else {
+                self.postMessage({ pos, length: currentLength, end: false })
             }
         }
 

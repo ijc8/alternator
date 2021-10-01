@@ -244,7 +244,7 @@ const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: 
                         }} />
                         <div className="bg-gray-500 h-1 relative" style={{ width: `${length / duration * 100}%` }}>
                             {duration && <>
-                                <div className="bg-cyan-500 h-1" style={{ width: `${pos / length * 100}%` }} />
+                                <div className="bg-cyan-500 h-1" style={{ width: `${Math.min(pos, length) / length * 100}%` }} />
                                 <div className="hidden group-hover:block absolute top-0 transform -translate-x-1/2 -translate-y-1/4 rounded-full w-2 h-2 bg-white"
                                     style={{ left: `${pos / length * 100}%` }} />
                             </>}
