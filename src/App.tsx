@@ -29,6 +29,7 @@ const tracks = [
 const audioContext = new AudioContext()
 
 let audioWorklet: AudioWorkletNode
+let channel: MessageChannel
 let webWorker: Worker
 let setupDone = false
 
@@ -38,6 +39,9 @@ async function setupAudio() {
     await audioContext.audioWorklet.addModule("worklet.js")
     setupDone = true
 }
+
+let _setInfo = ({ pos, length }: { pos: number, length: number }) => {}
+let _setUnderrun = (u: boolean) => {}
 
 async function play(name: string) {
     if (!setupDone) {
@@ -50,6 +54,11 @@ async function play(name: string) {
         numberOfOutputs: 1,
         outputChannelCount: [1],
     })
+    channel = new MessageChannel()
+    channel.port1.onmessage = (e) => {
+        _setUnderrun(e.data)
+    }
+    audioWorklet.port.postMessage(null, [channel.port2])
     webWorker = new Worker("worker.js")
     // Send sample rate and Audio Worklet's port to the Web Worker, which will generate the samples as needed.
     webWorker.postMessage({ name, sampleRate: audioContext.sampleRate, port: audioWorklet.port }, [audioWorklet.port])
@@ -166,16 +175,19 @@ interface PlayState {
 }
 
 const Sidebar = () => {
-    return <header className="w-56 bg-black text-3xl">
-        <div className="flex flex-row">
-            <div className="glitch flex-grow relative top-8" id="logo">
-                {[...new Array(5)].map((_, i) => <div key={i}>Alternator</div>)}
-            </div>
+    const [underrun, setUnderrun] = useState(false)
+    _setUnderrun = setUnderrun
+
+    return <header className="w-56 bg-black">
+        <div className="glitch text-3xl flex-grow relative top-8 mb-14" id="logo">
+            {[...new Array(5)].map((_, i) => <div key={i}>Alternator</div>)}
+        </div>
+        <div className="flex items-center justify-center">
+            Status
+            <div className={`w-2 h-2 ml-2 mt-0.5 rounded-full ${underrun ? "bg-red-500" : "bg-green-400"}`} />
         </div>
     </header>
 }
-
-let _setInfo = ({ pos, length }: { pos: number, length: number }) => {}
 
 function formatTime(seconds: number) {
     if (seconds === Infinity) {

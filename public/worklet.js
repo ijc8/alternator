@@ -9,10 +9,13 @@ class DoubleBufferProcessor extends AudioWorkletProcessor {
         this.currentBuffer = new Float32Array(BLOCK_SIZE)
         this.nextBuffer = new Float32Array(BLOCK_SIZE)
         this.index = 0
-
+        this.underrun = false
         this.port.onmessage = (e) => {
-            this.nextBuffer = e.data
-            this.nextBufferReady = true
+            this.statusPort = e.ports[0]
+            this.port.onmessage = (e) => {
+                this.nextBuffer = e.data
+                this.nextBufferReady = true
+            }
         }
 
         this.swapBuffers()
@@ -30,12 +33,18 @@ class DoubleBufferProcessor extends AudioWorkletProcessor {
         const output = outputs[0][0]
         if (this.index >= BLOCK_SIZE) {
             // Currently in underrun.
-            if (this.index === BLOCK_SIZE) {
-                // Only print this once per underrun-streak.
-                console.log("Underrun!")
+            if (!this.underrun) {
+                // Signal the start of an underrun.
+                this.statusPort.postMessage(true)
+                this.underrun = true
             }
             output.fill(0)
         } else {
+            if (this.underrun) {
+                // Signal the end of an underrun.
+                this.statusPort.postMessage(false)
+                this.underrun = false
+            }
             output.set(this.currentBuffer.subarray(this.index, this.index + output.length))
         }
         // NOTE: This assumes BLOCK_SIZE is a multiple of output.length (128).
