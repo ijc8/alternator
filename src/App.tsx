@@ -1,6 +1,5 @@
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { BiPlay, BiPause, BiRewind, BiFastForward, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
-import logo from './logo.svg'
 import './App.css'
 
 const tracks = [
@@ -40,8 +39,6 @@ async function setupAudio() {
     setupDone = true
 }
 
-let pos = 0
-
 async function play(name: string) {
     if (!setupDone) {
         await setupAudio()
@@ -62,10 +59,9 @@ async function play(name: string) {
             resolveSetup({
                 end: new Promise<void>(resolveEnd => {
                     webWorker.onmessage = (event) => {
-                        if (event.data === "end") {
+                        _setInfo(event.data)
+                        if (event.data.end) {
                             resolveEnd()
-                        } else {
-                            _setPos(Math.floor(event.data / audioContext.sampleRate))
                         }
                     }
                 })
@@ -179,7 +175,7 @@ const Sidebar = () => {
     </header>
 }
 
-let _setPos = (pos: number) => {}
+let _setInfo = ({ pos, length }: { pos: number, length: number }) => {}
 
 function formatTime(seconds: number) {
     seconds = Math.floor(seconds)
@@ -196,17 +192,27 @@ function formatTime(seconds: number) {
 const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: (b: boolean) => void }) => {
     const track = tracks.find(track => track.name === state?.name)
     const disabled = state === null || state.status ===  "setup"
-    const [pos, setPos] = useState(0)
-    _setPos = setPos
+    const seekBar = useRef<HTMLDivElement>(null)
+    const [{ pos, length }, setInfo] = useState({ pos: 0, length: 0 })
+    _setInfo = setInfo
 
-    return <footer className="bg-gray-900 flex items-center px-4 py-6">
-        <div className="w-1/3">
+    const seek = (event: MouseEvent | React.MouseEvent) => {
+        if (!seekBar.current || !state) {
+            return
+        }
+        const el = seekBar.current!
+        const frac = (event.clientX - el.offsetLeft) / el.clientWidth
+        webWorker.postMessage(Math.round(length * Math.max(0, Math.min(frac, 1))))
+    }
+
+    return <footer className="bg-gray-900 flex justify-between items-center px-4 py-6">
+        <div className="w-1/4">
             {track && <>
                 <div>{track.title}</div>
                 <div className="text-gray-400 text-sm">{track.artist}</div>
             </>}
         </div>
-        <div className="w-1/3">
+        <div className="w-5/12">
             <div className="flex justify-center text-3xl">
                 <button disabled={disabled} className="disabled:text-gray-500"><BiRewind /></button>
                 <button disabled={disabled} className="disabled:text-gray-500 text-4xl">
@@ -216,12 +222,28 @@ const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: 
                 </button>
                 <button disabled={disabled} className="disabled:text-gray-500"><BiFastForward /></button>
             </div>
-            <div className="flex items-center text-gray-400 text-sm">
-                {formatTime(pos)}
-                <div className="ml-2 bg-cyan-500 w-full h-1"></div>
+            <div className="flex justify-between items-center text-gray-400 text-sm select-none">
+                <div className="text-right w-12">{formatTime(Math.floor(pos / audioContext.sampleRate))}</div>
+                <div ref={seekBar} className="group mx-2 py-2 w-full" onClick={seek} onMouseDown={(e) => {
+                    const release = () => {
+                        document.removeEventListener("mousemove", seek)
+                        document.removeEventListener("mouseup", release)
+                    }
+                    document.addEventListener("mousemove", seek)
+                    document.addEventListener("mouseup", release)
+                }}>
+                    <div className="bg-gray-500 w-full h-1 relative">
+                        {state && <>
+                            <div className="bg-cyan-500 h-1" style={{ width: `${pos / length * 100}%` }} />
+                            <div className="hidden group-hover:block absolute top-0 transform -translate-x-1/2 -translate-y-1/4 rounded-full w-2 h-2 bg-white"
+                                style={{ left: `${pos / length * 100}%` }} />
+                        </>}
+                    </div>
+                </div>
+                <div className="w-12">{formatTime(Math.floor(length / audioContext.sampleRate))}</div>
             </div>
         </div>
-        <div className="w-1/3 flex justify-end items-center">
+        <div className="w-1/4 flex justify-end items-center">
             <BiVolumeFull className="text-gray-400 mr-2" />
             <div className="bg-gray-500 w-32 h-1"></div>
         </div>
