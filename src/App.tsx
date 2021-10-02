@@ -1,5 +1,5 @@
 import { Dialog } from '@headlessui/react'
-import React, { useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
 // TODO: Consider BsJournalCode when react-icons 4.3.0 isn't broken.
 import { BsFileEarmarkCode } from 'react-icons/bs'
@@ -139,9 +139,9 @@ const PlayAnimation = () => {
 type PlayStatus = "setup" | "play" | "pause"
 
 const Track = ({
-    index, title, artist, album, duration, status, setPlaying,
+    index, name, title, artist, album, duration, status, setPlaying,
 } : {
-    index: number, title: string, artist: string, album: string, duration: number, status: PlayStatus | null, setPlaying: (p: boolean) => void,
+    index: number, name: string, title: string, artist: string, album: string, duration: number, status: PlayStatus | null, setPlaying: (p: boolean) => void,
 }) => {
     const [hover, setHover] = useState(false)
     const [sourceOpen, setSourceOpen] = useState(false)
@@ -181,29 +181,69 @@ const Track = ({
                 <BsFileEarmarkCode />
             </button>
         </div>
-        <SourceView isOpen={sourceOpen} setIsOpen={setSourceOpen} title={title} />
+        <SourceView isOpen={sourceOpen} setIsOpen={setSourceOpen} name={name} title={title} />
     </div>
 }
 
-const SourceView = ({ isOpen, setIsOpen, title }: { isOpen: boolean, setIsOpen: (b: boolean) => void, title: string }) => {
+interface File {
+    name: string
+    contents: string
+}
+
+const SourceView = ({ isOpen, setIsOpen, name, title }: { isOpen: boolean, setIsOpen: (b: boolean) => void, name: string, title: string }) => {
+    const [files, setFiles] = useState<File[]>([])
+    const [selectedFile, setSelectedFile] = useState<File>()
+
+    useEffect(() => {
+        if (!isOpen) {
+            setFiles([])
+            setSelectedFile(undefined)
+            return
+        }
+        (async () => {
+            const { files } = await (await fetch(`bundles/${name}/bundle.metadata`)).json()
+            const data = new Uint8Array(await (await fetch(`bundles/${name}/bundle.data`)).arrayBuffer())
+            const decoder = new TextDecoder()
+            for (const file of files) {
+                file.name = file.filename.substr(1)
+                file.contents = decoder.decode(data.subarray(file.start, file.end))
+            }
+            setFiles(files)
+            setSelectedFile(files[0])
+        })()
+    }, [name, isOpen])
+
+    const getLanguage = (name: string) => {
+        if (name.endsWith(".py")) {
+            return "python"
+        } else if (name.endsWith(".js")) {
+            return "javascript"
+        } else {
+            return "text"
+        }
+    }
+
     return <Dialog open={isOpen} onClose={() => setIsOpen(false)} className="fixed z-10 inset-0 overflow-y-auto">
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center min-h-screen h-screen">
             <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
-            <div className="relative bg-gray-600 text-white rounded max-w-md mx-auto p-3">
+            <div className="relative bg-gray-700 text-white rounded max-w-full max-h-full mx-auto p-3 flex flex-col">
                 <Dialog.Title className="flex border-b mb-3"><BsFileEarmarkCode className="mr-2 text-xl" /> {title}</Dialog.Title>
-                <div className="flex">
-                    <div className="bg-gray-900 mr-2">
+                <div className="flex min-h-0">
+                    <div className="bg-gray-800 mr-2">
                         <ul>
-                            <li className="px-2 bg-blue-600">foobar.js</li>
-                            <li className="px-2">quux.py</li>
+                            {files.map(file =>
+                                <li key={file.name} className={(file === selectedFile ? "bg-blue-600 " : "") + "px-2"}
+                                    onClick={() => setSelectedFile(file)}>
+                                    {file.name}
+                                </li>
+                            )}
                         </ul>
                     </div>
-                    <SyntaxHighlighter language="javascript" style={a11yDark}>
-                        {`console.log("Hello, world!")
-function yipee() {
-    return "ki-yay"
-}`}
-                    </SyntaxHighlighter>
+                    {selectedFile
+                        ? <SyntaxHighlighter language={getLanguage(selectedFile.name)} style={a11yDark} className="max-h-full overflow-y-auto">
+                            {selectedFile.contents}
+                        </SyntaxHighlighter>
+                        : null}
                 </div>
             </div>
         </div>
@@ -353,12 +393,17 @@ const App = () => {
                             <div className="w-1/4">Duration</div>
                         </div>
                         <div className="col-span-full border-b border-gray-700 mb-2"></div>
-                        {tracks.map(({ name, ...song }, i) => <Track key={i} index={i} {...song} status={state?.name === name ? state.status : null} setPlaying={(playing: boolean) => {
-                            setState({
-                                name,
-                                status: playing ? "play" : "pause",
-                            })
-                        }} />)}
+                        {tracks.map(({ name, ...track }, i) =>
+                        <Track
+                            key={i} index={i} name={name} {...track}
+                            status={state?.name === name ? state.status : null}
+                            setPlaying={(playing: boolean) => {
+                                setState({
+                                    name,
+                                    status: playing ? "play" : "pause",
+                                })
+                            }
+                        } />)}
                     </div>
                 </div>
             </main>
