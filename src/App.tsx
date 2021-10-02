@@ -1,5 +1,7 @@
 import React, { useRef, useState } from 'react'
 import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
+// TODO: Consider BsJournalCode when react-icons 4.3.0 isn't broken.
+import { BsFileEarmarkCode } from 'react-icons/bs'
 import './App.css'
 
 const tracks = [
@@ -148,14 +150,18 @@ const Track = ({
         setHover(false)
     }
 
-    return <div className={(status === null ? "" : "bg-gray-700 ") + "flex items-center hover:bg-gray-600 px-4 py-2"} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
+    const viewSource = () => {
+        alert("Coming soon!")
+    }
+
+    return <div className={(status === null ? "" : "bg-gray-700 ") + "group flex items-center hover:bg-gray-600 px-4 py-2"} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
         <div className="w-1/4">
             {status === "setup"
                 ? <div className="relative -left-2"><LoadAnimation /></div>
                 : hover
-                    ? status === "play"
-                        ? <BiPause className="text-2xl relative -left-1.5" onClick={() => setPlaying(false)} />
-                        : <BiPlay className="text-2xl relative -left-1.5" onClick={() => setPlaying(true)} />
+                    ? <button className="text-2xl relative -left-1.5 top-1" onClick={() => setPlaying(status !== "play")}>
+                        {status === "play" ? <BiPause /> : <BiPlay />}
+                    </button>
                     : status === "play"
                         ? <div className="relative -left-2 top-0.5"><PlayAnimation /></div>
                         : index + 1}
@@ -165,7 +171,10 @@ const Track = ({
             <div className="text-gray-400 text-sm">{artist}</div>
         </div>
         <div className="w-1/4">{album}</div>
-        <div className="w-1/4">{formatTime(duration)}</div>
+        <div className="w-2/12">{formatTime(duration)}</div>
+        <div className="w-1/12 hidden group-hover:block">
+            <button onClick={viewSource}><BsFileEarmarkCode className="text-xl" /></button>
+        </div>
     </div>
 }
 
