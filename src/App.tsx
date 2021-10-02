@@ -1,7 +1,10 @@
+import { Dialog } from '@headlessui/react'
 import React, { useRef, useState } from 'react'
 import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
 // TODO: Consider BsJournalCode when react-icons 4.3.0 isn't broken.
 import { BsFileEarmarkCode } from 'react-icons/bs'
+import SyntaxHighlighter from 'react-syntax-highlighter'
+import { a11yDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import './App.css'
 
 const tracks = [
@@ -141,6 +144,7 @@ const Track = ({
     index: number, title: string, artist: string, album: string, duration: number, status: PlayStatus | null, setPlaying: (p: boolean) => void,
 }) => {
     const [hover, setHover] = useState(false)
+    const [sourceOpen, setSourceOpen] = useState(false)
 
     const onMouseEnter = () => {
         setHover(true)
@@ -151,7 +155,7 @@ const Track = ({
     }
 
     const viewSource = () => {
-        alert("Coming soon!")
+        setSourceOpen(true)
     }
 
     return <div className={(status === null ? "" : "bg-gray-700 ") + "group flex items-center hover:bg-gray-600 px-4 py-2"} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
@@ -173,9 +177,37 @@ const Track = ({
         <div className="w-1/4">{album}</div>
         <div className="w-2/12">{formatTime(duration)}</div>
         <div className="w-1/12 hidden group-hover:block">
-            <button onClick={viewSource}><BsFileEarmarkCode className="text-xl" /></button>
+            <button onClick={viewSource} className="text-xl relative top-1">
+                <BsFileEarmarkCode />
+            </button>
         </div>
+        <SourceView isOpen={sourceOpen} setIsOpen={setSourceOpen} title={title} />
     </div>
+}
+
+const SourceView = ({ isOpen, setIsOpen, title }: { isOpen: boolean, setIsOpen: (b: boolean) => void, title: string }) => {
+    return <Dialog open={isOpen} onClose={() => setIsOpen(false)} className="fixed z-10 inset-0 overflow-y-auto">
+        <div className="flex items-center justify-center min-h-screen">
+            <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+            <div className="relative bg-gray-600 text-white rounded max-w-md mx-auto p-3">
+                <Dialog.Title className="flex border-b mb-3"><BsFileEarmarkCode className="mr-2 text-xl" /> {title}</Dialog.Title>
+                <div className="flex">
+                    <div className="bg-gray-900 mr-2">
+                        <ul>
+                            <li className="px-2 bg-blue-600">foobar.js</li>
+                            <li className="px-2">quux.py</li>
+                        </ul>
+                    </div>
+                    <SyntaxHighlighter language="javascript" style={a11yDark}>
+                        {`console.log("Hello, world!")
+function yipee() {
+    return "ki-yay"
+}`}
+                    </SyntaxHighlighter>
+                </div>
+            </div>
+        </div>
+    </Dialog>
 }
 
 interface PlayState {
