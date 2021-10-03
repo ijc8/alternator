@@ -10,23 +10,37 @@ import './App.css'
 const tracks = [
     {
         name: "pd-thing",
-        title: "Harmonic Thing (Pure Data)",
+        title: "Some Harmonics",
         artist: "Ian Clester",
         album: "Pretty Paltry Patches",
         duration: 10,
     },
     {
+        name: "pd-thing2",
+        title: "Some Harmonics (Extended Edition)",
+        artist: "Ian Clester",
+        album: "Pretty Paltry Patches",
+        duration: 60,
+    },
+    {
         name: "py-audio-file",
-        title: "Vocal Phasing (Aleatora)",
+        title: "Vocal Phasing",
         artist: "Ian Clester",
         album: "Phasing: Greatest Hits (1964-2021)",
         duration: Infinity,
     },
     {
         name: "py-piano-phase",
-        title: "Piano(?) Phase (Aleatora)",
+        title: "Piano(?) Phase",
         artist: "Ian Clester",
         album: "Phasing: Greatest Hits (1964-2021)",
+        duration: Infinity,
+    },
+    {
+        name: "soulphage",
+        title: "Beat",
+        artist: "Ian Clester",
+        album: "Funky Functions",
         duration: Infinity,
     }
 ]
@@ -68,6 +82,24 @@ async function play(name: string) {
     // Send sample rate and Audio Worklet's port to the Web Worker, which will generate the samples as needed.
     webWorker.postMessage({ name, sampleRate: audioContext.sampleRate, port: audioWorklet.port }, [audioWorklet.port])
     audioWorklet.connect(audioContext.destination)
+    return new Promise<{ end: Promise<void> }>(resolveSetup => {
+        webWorker.onmessage = () => {
+            resolveSetup({
+                end: new Promise<void>(resolveEnd => {
+                    webWorker.onmessage = (event) => {
+                        _setInfo(event.data)
+                        if (event.data.end) {
+                            resolveEnd()
+                        }
+                    }
+                })
+            })
+        }
+    })
+}
+
+async function reset() {
+    webWorker.postMessage({ sampleRate: audioContext.sampleRate })
     return new Promise<{ end: Promise<void> }>(resolveSetup => {
         webWorker.onmessage = () => {
             resolveSetup({
@@ -285,7 +317,7 @@ function formatTime(seconds: number) {
     return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
 }
 
-const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: (b: boolean) => void }) => {
+const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPlaying: (b: boolean) => void, reset: () => void }) => {
     const track = tracks.find(track => track.name === state?.name)
     const disabled = state === null || state.status ===  "setup"
     const seekBar = useRef<HTMLDivElement>(null)
@@ -313,7 +345,7 @@ const Controls = ({ state, setPlaying }: { state: PlayState | null, setPlaying: 
         </div>
         <div className="w-5/12">
             <div className="flex justify-center text-3xl">
-                <button disabled={disabled} className="disabled:text-gray-500"><BiSkipPrevious /></button>
+                <button disabled={disabled} className="disabled:text-gray-500" onClick={reset}><BiSkipPrevious /></button>
                 <button disabled={disabled} className="disabled:text-gray-500 text-4xl">
                     {state?.status === "play"
                         ? <BiPauseCircle onClick={() => setPlaying(false)} />
@@ -413,6 +445,18 @@ const App = () => {
                 name: state!.name,
                 status: playing ? "play" : "pause",
             })
+        }} reset={async () => {
+            _setState({ name: state!.name, status: "setup" })
+            // TODO: Consistent method of resetting.
+            let end
+            if (state!.name.startsWith("pd")) {
+                end = (await play(state!.name)).end
+            } else {
+                end = (await reset()).end
+            }
+            _setState({ name: state!.name, status: "play" });
+            await end
+            _setState(null)        
         }} />
     </div>
 }

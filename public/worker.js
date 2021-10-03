@@ -63,6 +63,18 @@ self.onmessage = async (event) => {
             playAudio()
         } else if (event.data === false) {
             playSilence()
+        } else if (event.data.sampleRate) {
+            // TODO: This is a bit of a hack; may prefer to reset by just creating a new worker.
+            // (Current obstacle to that is Pyodide load time.)
+            playSilence()
+            setup(event.data.sampleRate).then(() => {
+                buffer = new Float32Array(HISTORY_SECONDS * event.data.sampleRate)
+                pos = 0
+                currentLength = 0
+                fullLength = Infinity
+                self.postMessage("setup")
+                playAudio()
+            })
         } else {
             pos = event.data
             self.postMessage({ pos, length: currentLength, end: pos === fullLength })
