@@ -11,7 +11,7 @@ async function setup(sampleRate) {
 }
 
 function process(output) {
-  buffer = Module._malloc(output.length * output.BYTES_PER_ELEMENT)
+  const buffer = Module._malloc(output.length * output.BYTES_PER_ELEMENT)
   Module.HEAPF32.set(output, buffer / output.BYTES_PER_ELEMENT)
   const out = Module._process(buffer, output.length)
   output.set(new Float32Array(Module.HEAP32.buffer, buffer, output.length))
