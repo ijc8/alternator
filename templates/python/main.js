@@ -37,7 +37,7 @@ async function setup(sampleRate) {
     await setupPyodidePromise
     self.pyodide.runPython(`
 import os
-os.chdir("alternator")
+os.chdir("/alternator")
 import sys
 sys.path.append(".")
 import aleatora.streams.audio

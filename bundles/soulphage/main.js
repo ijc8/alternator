@@ -36,13 +36,16 @@ let audioCallback
 async function setup(sampleRate) {
     await setupPyodidePromise
     self.pyodide.runPython(`
+from importlib import reload
 import os
-os.chdir("alternator")
+os.chdir("/alternator")
 import sys
 sys.path.append(".")
 import aleatora.streams.audio
 aleatora.streams.audio.SAMPLE_RATE = ${sampleRate}
-from main import main`)
+import main
+reload(main)
+main = main.main`)
     audioCallback = self.pyodide.runPython(`
 print("Playing:", main)
 samples = iter(main)

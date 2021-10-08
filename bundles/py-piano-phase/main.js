@@ -39,7 +39,7 @@ async function setup(sampleRate) {
 import aleatora.streams.audio
 aleatora.streams.audio.SAMPLE_RATE = ${sampleRate}
 import os
-os.chdir("alternator")
+os.chdir("/alternator")
 import sys
 sys.path.append(".")
 from main import main`)
