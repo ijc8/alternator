@@ -1,15 +1,15 @@
 console.log("AudioWorklet: start")
 
-const BLOCK_SIZE = 1024
-
 class DoubleBufferProcessor extends AudioWorkletProcessor {
     constructor(options) {
         console.log("AudioWorklet: constructor")
         super()
-        this.currentBuffer = new Float32Array(BLOCK_SIZE)
-        this.nextBuffer = new Float32Array(BLOCK_SIZE)
+        this.frameSize = options.processorOptions.frameSize
+        this.currentBuffer = new Float32Array(this.frameSize * options.outputChannelCount[0])
+        this.nextBuffer = new Float32Array(this.frameSize * options.outputChannelCount[0])
         this.index = 0
         this.underrun = false
+
         this.port.onmessage = (e) => {
             this.statusPort = e.ports[0]
             this.port.onmessage = (e) => {
@@ -30,26 +30,32 @@ class DoubleBufferProcessor extends AudioWorkletProcessor {
     }
 
     process(inputs, outputs, parameters) {
-        const output = outputs[0][0]
-        if (this.index >= BLOCK_SIZE) {
+        const channels = outputs[0]
+        if (this.index >= this.frameSize) {
             // Currently in underrun.
             if (!this.underrun) {
                 // Signal the start of an underrun.
                 this.statusPort.postMessage(true)
                 this.underrun = true
             }
-            output.fill(0)
+            for (const channel of channels) {
+                channel.fill(0)
+            }
         } else {
             if (this.underrun) {
                 // Signal the end of an underrun.
                 this.statusPort.postMessage(false)
                 this.underrun = false
             }
-            output.set(this.currentBuffer.subarray(this.index, this.index + output.length))
+            for (let i = 0; i < channels.length; i++) {
+                const start = this.index + this.frameSize * i
+                const subarray = this.currentBuffer.subarray(start, start + channels[i].length)
+                channels[i].set(subarray)
+            }
         }
-        // NOTE: This assumes BLOCK_SIZE is a multiple of output.length (128).
-        this.index += output.length
-        if (this.index >= BLOCK_SIZE && this.nextBufferReady) {
+        // NOTE: This assumes this.frameSize is a multiple of the channels[i].length (128).
+        this.index += channels[0].length
+        if (this.index >= this.frameSize && this.nextBufferReady) {
             this.swapBuffers()
         }
         return true

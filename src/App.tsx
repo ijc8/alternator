@@ -37,12 +37,12 @@ const tracks = [
         duration: Infinity,
     },
     {
-        name: "soulphage",
+        name: "beat",
         title: "Beat",
         artist: "Ian Clester",
         album: "Funky Functions",
         duration: Infinity,
-    }
+    },
 ]
 
 const audioContext = new AudioContext()
@@ -72,6 +72,7 @@ async function play(name: string) {
         numberOfInputs: 0,
         numberOfOutputs: 1,
         outputChannelCount: [1],
+        processorOptions: { frameSize: 1024 },
     })
     channel = new MessageChannel()
     channel.port1.onmessage = (e) => {
