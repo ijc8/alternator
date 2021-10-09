@@ -64,6 +64,16 @@ const tracks = [
         duration: Infinity,
         channels: 2,
     },
+    {
+        name: "strum",
+        title: "Strum",
+        artist: "RTcmix maintainers",
+        album: "Pluck Patrol",
+        // TODO: Display position/duration correctly in stereo.
+        // (Currently both are effectively doubled.)
+        duration: 12,
+        channels: 2,
+    },
 ]
 
 const audioContext = new AudioContext()
