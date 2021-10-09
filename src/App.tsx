@@ -14,6 +14,7 @@ const tracks = [
         artist: "Ian Clester",
         album: "Pretty Paltry Patches",
         duration: 10,
+        channels: 1,
     },
     {
         name: "pd-thing2",
@@ -21,6 +22,7 @@ const tracks = [
         artist: "Ian Clester",
         album: "Pretty Paltry Patches",
         duration: 60,
+        channels: 1,
     },
     {
         name: "py-audio-file",
@@ -28,6 +30,7 @@ const tracks = [
         artist: "Ian Clester",
         album: "Phasing: Greatest Hits (1964-2021)",
         duration: Infinity,
+        channels: 1,
     },
     {
         name: "py-piano-phase",
@@ -35,6 +38,7 @@ const tracks = [
         artist: "Ian Clester",
         album: "Phasing: Greatest Hits (1964-2021)",
         duration: Infinity,
+        channels: 1,
     },
     {
         name: "beat",
@@ -42,6 +46,23 @@ const tracks = [
         artist: "Ian Clester",
         album: "Funky Functions",
         duration: Infinity,
+        channels: 1,
+    },
+    {
+        name: "py-stereo-test",
+        title: "Stereo Test (Python)",
+        artist: "Ian Clester",
+        album: "The Test Album",
+        duration: Infinity,
+        channels: 2,
+    },
+    {
+        name: "c-stereo-test",
+        title: "Stereo Test (C)",
+        artist: "Ian Clester",
+        album: "The Test Album",
+        duration: Infinity,
+        channels: 2,
     },
 ]
 
@@ -68,10 +89,11 @@ async function play(name: string) {
     }
     audioWorklet && audioWorklet.disconnect()
     webWorker && webWorker.terminate()
+    const channels = tracks.find(track => track.name === name)!.channels
     audioWorklet = new AudioWorkletNode(audioContext, "doublebuffer", {
         numberOfInputs: 0,
         numberOfOutputs: 1,
-        outputChannelCount: [1],
+        outputChannelCount: [channels],
         processorOptions: { frameSize: 1024 },
     })
     channel = new MessageChannel()

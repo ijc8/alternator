@@ -1,3 +1,4 @@
+// TODO: Support stereo seeking.
 console.log("Web Worker: start")
 let port
 // Playback position, in samples.
@@ -7,7 +8,8 @@ let currentLength = 0
 // Total length of the composition: number of samples generated between start and end.
 let fullLength = Infinity
 const HISTORY_SECONDS = 5 * 60
-let buffer = null
+// TODO: Investigate conflict with Emscripten-generated `buffer` (c-stereo-test).
+let _buffer = null
 
 function playSilence() {
     port.onmessage = (e) => {
@@ -25,7 +27,7 @@ function playAudio() {
         // TODO: Use `buffer` as a circular buffer, in case we hit `HISTORY_SECONDS`.
         const blockLength = e.data.length
         while (pos + blockLength > currentLength) {
-            const length = process(buffer.subarray(currentLength, currentLength + blockLength))
+            const length = process(_buffer.subarray(currentLength, currentLength + blockLength))
             currentLength += length
             if (length < blockLength) {
                 fullLength = currentLength
@@ -36,12 +38,12 @@ function playAudio() {
         }
 
         if (pos + blockLength > fullLength) {
-            e.data.set(buffer.subarray(pos, fullLength))
+            e.data.set(_buffer.subarray(pos, fullLength))
             e.data.fill(0, fullLength - pos)
             pos = fullLength
             playSilence()
         } else {
-            e.data.set(buffer.subarray(pos, pos + blockLength))
+            e.data.set(_buffer.subarray(pos, pos + blockLength))
             pos += blockLength
         }
         // Send updated position/status to main thread.
@@ -68,7 +70,7 @@ self.onmessage = async (event) => {
             // (Current obstacle to that is Pyodide load time.)
             playSilence()
             setup(event.data.sampleRate).then(() => {
-                buffer = new Float32Array(HISTORY_SECONDS * event.data.sampleRate)
+                _buffer = new Float32Array(HISTORY_SECONDS * event.data.sampleRate)
                 pos = 0
                 currentLength = 0
                 fullLength = Infinity
@@ -83,7 +85,7 @@ self.onmessage = async (event) => {
     self.path = `bundles/${event.data.name}/`
     importScripts(`${self.path}/main.js`)
     setup(event.data.sampleRate).then(() => {
-        buffer = new Float32Array(HISTORY_SECONDS * event.data.sampleRate)
+        _buffer = new Float32Array(HISTORY_SECONDS * event.data.sampleRate)
         self.postMessage("setup")
         playAudio()
     })
