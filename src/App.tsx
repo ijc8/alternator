@@ -66,16 +66,16 @@ const tracks = [
         duration: Infinity,
         channels: 2,
     },
-    {
-        name: "strum",
-        title: "Strum",
-        artist: "RTcmix maintainers",
-        album: "Pluck Patrol",
-        // TODO: Display position/duration correctly in stereo.
-        // (Currently both are effectively doubled.)
-        duration: 12,
-        channels: 2,
-    },
+    // {
+    //     name: "strum",
+    //     title: "Strum",
+    //     artist: "RTcmix maintainers",
+    //     album: "Pluck Patrol",
+    //     // TODO: Display position/duration correctly in stereo.
+    //     // (Currently both are effectively doubled.)
+    //     duration: 12,
+    //     channels: 2,
+    // },
 ]
 
 const audioContext = new AudioContext()
@@ -326,18 +326,30 @@ interface PlayState {
     status: PlayStatus
 }
 
+let _updateTracks = (n: number) => {}
+
+async function fetchTrack() {
+    const url = prompt("Track URL")
+    const metadata = await (await fetch(`${url}/bundle.metadata`)).json()
+    console.log("Got metadata:", metadata)
+    tracks.push(metadata)
+    _updateTracks(tracks.length)
+}
+
 const Sidebar = () => {
     const [underrun, setUnderrun] = useState(false)
     _setUnderrun = setUnderrun
 
-    return <header className="w-56 bg-black">
-        <div className="glitch text-3xl flex-grow relative top-8 mb-14" id="logo">
+    return <header className="w-56 bg-black flex flex-col justify-start">
+        <div className="glitch text-3xl relative top-8 mb-14" id="logo">
             {[...new Array(5)].map((_, i) => <div key={i}>Alternator</div>)}
         </div>
         <div className="flex items-center justify-center">
             Status
             <div className={`w-2 h-2 ml-2 mt-0.5 rounded-full ${underrun ? "bg-red-500" : "bg-green-400"}`} />
         </div>
+        {/* Temporary button for testing. */}
+        <button className="bg-white hover:bg-cyan-100 text-black rounded m-8" onClick={fetchTrack}>Fetch track</button>
     </header>
 }
 
@@ -428,6 +440,8 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
 
 const App = () => {
     const [state, _setState] = useState<PlayState | null>(null)
+    const forceUpdate = useState(0)[1]
+    _updateTracks = forceUpdate
 
     const setState = async (newState: PlayState) => {
         if (state?.name !== newState.name) {
@@ -493,11 +507,11 @@ const App = () => {
             } else {
                 end = (await reset()).end
             }
-            _setState({ name: state!.name, status: "play" });
+            _setState({ name: state!.name, status: "play" })
             await end
             _setState(null)        
         }} />
     </div>
 }
 
-export default App;
+export default App
