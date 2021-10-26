@@ -7,6 +7,8 @@ import SyntaxHighlighter from 'react-syntax-highlighter'
 import { a11yDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import './App.css'
 
+const host = "https://ijc8.me"
+
 const tracks = [
     {
         name: "pd-thing",
@@ -113,7 +115,11 @@ async function play(name: string) {
     audioWorklet.port.postMessage(null, [channel.port2])
     webWorker = new Worker("worker.js")
     // Send sample rate and Audio Worklet's port to the Web Worker, which will generate the samples as needed.
-    webWorker.postMessage({ name, sampleRate: audioContext.sampleRate, port: audioWorklet.port }, [audioWorklet.port])
+    webWorker.postMessage({
+        path: `${host}/bundles/${name}/`,
+        sampleRate: audioContext.sampleRate,
+        port: audioWorklet.port
+    }, [audioWorklet.port])
     audioWorklet.connect(audioContext.destination)
     return new Promise<{ end: Promise<void> }>(resolveSetup => {
         webWorker.onmessage = () => {
@@ -266,8 +272,8 @@ const SourceView = ({ isOpen, setIsOpen, name, title }: { isOpen: boolean, setIs
             return
         }
         (async () => {
-            const { files } = await (await fetch(`bundles/${name}/bundle.metadata`)).json()
-            const data = new Uint8Array(await (await fetch(`bundles/${name}/bundle.data`)).arrayBuffer())
+            const { files } = await (await fetch(`${host}/bundles/${name}/bundle.metadata`)).json()
+            const data = new Uint8Array(await (await fetch(`${host}/bundles/${name}/bundle.data`)).arrayBuffer())
             const decoder = new TextDecoder()
             for (const file of files) {
                 file.name = file.filename.substr(1)

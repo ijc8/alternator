@@ -82,7 +82,7 @@ self.onmessage = async (event) => {
             self.postMessage({ pos, length: currentLength, end: pos === fullLength })
         }
     }
-    self.path = `bundles/${event.data.name}/`
+    self.path = event.data.path
     importScripts(`${self.path}/main.js`)
     setup(event.data.sampleRate).then(() => {
         _buffer = new Float32Array(HISTORY_SECONDS * event.data.sampleRate)
