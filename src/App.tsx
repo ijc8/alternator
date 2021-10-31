@@ -374,20 +374,46 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
     const duration = track && (track.duration === Infinity
         ? length + 10 * audioContext.sampleRate
         : track.duration * audioContext.sampleRate)
+    const [seekPos, setSeekPos] = useState<number>()
+    const durationRef = useRef(duration)
+    durationRef.current = duration
 
     _setInfo = ({ pos, length }) => {
         // The Web Worker doesn't know anything about channels.
-        setInfo({ pos: pos / track!.channels, length: length / track!.channels })
+        pos /= track!.channels
+        length /= track!.channels
+        setInfo({ pos, length })
+        if (seekPos !== undefined && pos === seekPos) {
+            // Clearing seekPos here prevents a visual glitch where the position and time briefly jump back to the present.
+            setSeekPos(undefined)
+        }
     }
 
-    const seek = (event: MouseEvent | React.MouseEvent) => {
+    const trackSeek = (event: MouseEvent | React.MouseEvent) => {
+        const duration = durationRef.current
         if (!seekBar.current || !state || !duration) {
             return
         }
         const el = seekBar.current!
         const frac = (event.clientX - el.offsetLeft) / el.clientWidth
-        webWorker.postMessage(Math.round(duration * Math.max(0, Math.min(frac, 1))) * track!.channels)
+        setSeekPos(Math.max(0, Math.min(frac, 1)) * duration)
     }
+
+    const seek = (event: MouseEvent | React.MouseEvent) => {
+        const duration = durationRef.current
+        if (!seekBar.current || !state || !duration) {
+            return
+        }
+        const el = seekBar.current!
+        const frac = (event.clientX - el.offsetLeft) / el.clientWidth
+        const nextPos = Math.round(duration * Math.max(0, Math.min(frac, 1)))
+        setSeekPos(nextPos)
+        webWorker.postMessage(nextPos * track!.channels)
+        document.removeEventListener("mousemove", trackSeek)
+        document.removeEventListener("mouseup", seek)
+    }
+
+    const displayPos = seekPos ?? pos
 
     return <footer className="bg-gray-900 flex justify-between items-center px-4 py-6">
         <div className="w-1/4">
@@ -407,14 +433,11 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
                 <button disabled={disabled} className="disabled:text-gray-500"><BiSkipNext /></button>
             </div>
             <div className="flex justify-between items-center text-gray-400 text-sm select-none">
-                {duration && <div className="text-right w-12">{formatTime(Math.floor(pos / audioContext.sampleRate))}</div>}
+                {duration && <div className="text-right w-12">{formatTime(Math.floor(displayPos / audioContext.sampleRate))}</div>}
                 <div ref={seekBar} className="group mx-2 py-2 w-full" onClick={seek} onMouseDown={(e) => {
-                    const release = () => {
-                        document.removeEventListener("mousemove", seek)
-                        document.removeEventListener("mouseup", release)
-                    }
-                    document.addEventListener("mousemove", seek)
-                    document.addEventListener("mouseup", release)
+                    trackSeek(e)
+                    document.addEventListener("mousemove", trackSeek)
+                    document.addEventListener("mouseup", seek)
                 }}>
                     {duration && <div className="w-full flex relative">
                         <div className="absolute w-full h-1 bg-gradient-split" style={{
@@ -424,8 +447,8 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
                         <div className="bg-gray-500 h-1 relative" style={{ width: `${length / duration * 100}%` }}>
                             {duration && <>
                                 <div className="bg-cyan-500 h-1" style={{ width: `${Math.min(pos, length) / length * 100}%` }} />
-                                <div className="hidden group-hover:block absolute top-0 transform -translate-x-1/2 -translate-y-1/4 rounded-full w-2 h-2 bg-white"
-                                    style={{ left: `${pos / length * 100}%` }} />
+                                <div className={(seekPos ? "" : "hidden group-hover:block ") + "absolute top-0 transform -translate-x-1/2 -translate-y-1/4 rounded-full w-2 h-2 bg-white"}
+                                    style={{ left: `${displayPos / length * 100}%` }} />
                             </>}
                         </div>
                     </div>}

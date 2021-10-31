@@ -2,6 +2,8 @@ console.log("Web Worker: start")
 let port
 // Playback position, in samples.
 let pos = 0
+// Target position for seeking.
+let nextPos = null
 // Number of samples generated so far (does not include replayed samples).
 let currentLength = 0
 // Total length of the composition: number of samples generated between start and end.
@@ -19,7 +21,7 @@ function playSilence() {
 
 const STARTING = 0
 const PLAYING = 1
-const PAUSING = 2
+const STOPPING = 2
 let state = STARTING
 
 function playAudio() {
@@ -57,12 +59,19 @@ function playAudio() {
                 e.data[i] *= i/e.data.length
             }
             state = PLAYING
-        } else if (state === PAUSING) {
+        } else if (state === STOPPING) {
             for (let i = 0; i < e.data.length; i++) {
                 e.data[i] *= 1 - i/e.data.length
             }
-            playSilence()
             state = STARTING
+            if (nextPos !== null) {
+                // Seeking.
+                pos = nextPos
+                nextPos = null
+            } else {
+                // Pausing.
+                playSilence()
+            }
         } 
 
         // Send updated position/status to main thread.
@@ -78,13 +87,15 @@ self.onmessage = async (event) => {
     port = event.data.port
     playSilence()
     // All futures messages will change the play state (play/pause/seek).
-    // TODO: Apply a brief envelope for each of these actions to prevent discontinuities.
     self.onmessage = (event) => {
         if (event.data === true) {
+            // Play.
             playAudio()
         } else if (event.data === false) {
-            state = PAUSING
+            // Pause.
+            state = STOPPING
         } else if (event.data.sampleRate) {
+            // Reset.
             // TODO: This is a bit of a hack; may prefer to reset by just creating a new worker.
             // (Current obstacle to that is Pyodide load time.)
             playSilence()
@@ -97,8 +108,15 @@ self.onmessage = async (event) => {
                 playAudio()
             })
         } else {
-            pos = event.data
-            self.postMessage({ pos, length: currentLength, end: pos === fullLength })
+            // Seek to given position.
+            if (state === STARTING) {
+                // Already paused, don't need to ramp down first.
+                pos = event.data
+                self.postMessage({ pos, length: currentLength, end: pos === fullLength })
+            } else {
+                nextPos = event.data
+                state = STOPPING
+            }
         }
     }
     self.path = event.data.path
