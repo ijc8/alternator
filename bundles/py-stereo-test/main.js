@@ -49,8 +49,8 @@ frames = iter(main)
 def callback(outdata, num_frames):
     i = -1
     for i, frame in zip(range(num_frames), frames):
-        outdata[i] = frame[0]
-        outdata[num_frames+i] = frame[1]
+        outdata[i * 2] = frame[0]
+        outdata[i * 2 + 1] = frame[1]
     return (i + 1) * 2
 callback
 `)
