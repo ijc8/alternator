@@ -1,4 +1,3 @@
-// TODO: Support stereo seeking.
 console.log("Web Worker: start")
 let port
 // Playback position, in samples.

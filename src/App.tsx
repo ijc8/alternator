@@ -71,9 +71,7 @@ const tracks = [
         title: "Strum",
         artist: "RTcmix maintainers",
         album: "Pluck Patrol",
-        // TODO: Display position/duration correctly in stereo.
-        // (Currently both are effectively doubled.)
-        duration: 12,
+        duration: 6,
         channels: 2,
     },
 ]
@@ -106,7 +104,7 @@ async function play(name: string) {
         numberOfInputs: 0,
         numberOfOutputs: 1,
         outputChannelCount: [channels],
-        processorOptions: { frameSize: 1024 },
+        processorOptions: { numFrames: 1024 },
     })
     channel = new MessageChannel()
     channel.port1.onmessage = (e) => {
@@ -376,7 +374,11 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
     const duration = track && (track.duration === Infinity
         ? length + 10 * audioContext.sampleRate
         : track.duration * audioContext.sampleRate)
-    _setInfo = setInfo
+
+    _setInfo = ({ pos, length }) => {
+        // The Web Worker doesn't know anything about channels.
+        setInfo({ pos: pos / track!.channels, length: length / track!.channels })
+    }
 
     const seek = (event: MouseEvent | React.MouseEvent) => {
         if (!seekBar.current || !state || !duration) {
@@ -384,7 +386,7 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
         }
         const el = seekBar.current!
         const frac = (event.clientX - el.offsetLeft) / el.clientWidth
-        webWorker.postMessage(Math.round(duration * Math.max(0, Math.min(frac, 1))))
+        webWorker.postMessage(Math.round(duration * Math.max(0, Math.min(frac, 1))) * track!.channels)
     }
 
     return <footer className="bg-gray-900 flex justify-between items-center px-4 py-6">

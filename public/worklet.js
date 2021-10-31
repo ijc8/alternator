@@ -4,10 +4,10 @@ class DoubleBufferProcessor extends AudioWorkletProcessor {
     constructor(options) {
         console.log("AudioWorklet: constructor")
         super()
-        this.frameSize = options.processorOptions.frameSize
-        this.currentBuffer = new Float32Array(this.frameSize * options.outputChannelCount[0])
-        this.nextBuffer = new Float32Array(this.frameSize * options.outputChannelCount[0])
-        this.index = 0
+        this.numFrames = options.processorOptions.numFrames
+        this.currentBuffer = new Float32Array(this.numFrames * options.outputChannelCount[0])
+        this.nextBuffer = new Float32Array(this.numFrames * options.outputChannelCount[0])
+        this.frameIndex = 0
         this.underrun = false
 
         this.port.onmessage = (e) => {
@@ -23,7 +23,7 @@ class DoubleBufferProcessor extends AudioWorkletProcessor {
 
     swapBuffers() {
         [this.currentBuffer, this.nextBuffer] = [this.nextBuffer, this.currentBuffer]
-        this.index = 0
+        this.frameIndex = 0
         this.nextBufferReady = false
         // Send next buffer for the Web Worker to fill.
         this.port.postMessage(this.nextBuffer, [this.nextBuffer.buffer])
@@ -31,7 +31,7 @@ class DoubleBufferProcessor extends AudioWorkletProcessor {
 
     process(inputs, outputs, parameters) {
         const channels = outputs[0]
-        if (this.index >= this.frameSize) {
+        if (this.frameIndex >= this.numFrames) {
             // Currently in underrun.
             if (!this.underrun) {
                 // Signal the start of an underrun.
@@ -51,15 +51,15 @@ class DoubleBufferProcessor extends AudioWorkletProcessor {
             const numChannels = channels.length
             const numFrames = channels[0].length
             for (let f = 0; f < numFrames; f++) {
-                const start = (this.index + f) * numChannels
+                const start = (this.frameIndex + f) * numChannels
                 for (let c = 0; c < numChannels; c++) {
                     channels[c][f] = this.currentBuffer[start + c]
                 }
             }
         }
         // NOTE: This assumes this.frameSize is a multiple of the channels[i].length (128).
-        this.index += channels[0].length
-        if (this.index >= this.frameSize && this.nextBufferReady) {
+        this.frameIndex += channels[0].length
+        if (this.frameIndex >= this.numFrames && this.nextBufferReady) {
             this.swapBuffers()
         }
         return true
