@@ -47,10 +47,14 @@ class DoubleBufferProcessor extends AudioWorkletProcessor {
                 this.statusPort.postMessage(false)
                 this.underrun = false
             }
-            for (let i = 0; i < channels.length; i++) {
-                const start = this.index + this.frameSize * i
-                const subarray = this.currentBuffer.subarray(start, start + channels[i].length)
-                channels[i].set(subarray)
+            // TODO: Maybe deinterleave in WebAssembly?
+            const numChannels = channels.length
+            const numFrames = channels[0].length
+            for (let f = 0; f < numFrames; f++) {
+                const start = (this.index + f) * numChannels
+                for (let c = 0; c < numChannels; c++) {
+                    channels[c][f] = this.currentBuffer[start + c]
+                }
             }
         }
         // NOTE: This assumes this.frameSize is a multiple of the channels[i].length (128).

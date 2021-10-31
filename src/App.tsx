@@ -7,7 +7,7 @@ import SyntaxHighlighter from 'react-syntax-highlighter'
 import { a11yDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import './App.css'
 
-const host = "https://ijc8.me"
+const host = "http://localhost:3000"  // "https://ijc8.me"
 
 const tracks = [
     {
@@ -66,16 +66,16 @@ const tracks = [
         duration: Infinity,
         channels: 2,
     },
-    // {
-    //     name: "strum",
-    //     title: "Strum",
-    //     artist: "RTcmix maintainers",
-    //     album: "Pluck Patrol",
-    //     // TODO: Display position/duration correctly in stereo.
-    //     // (Currently both are effectively doubled.)
-    //     duration: 12,
-    //     channels: 2,
-    // },
+    {
+        name: "strum",
+        title: "Strum",
+        artist: "RTcmix maintainers",
+        album: "Pluck Patrol",
+        // TODO: Display position/duration correctly in stereo.
+        // (Currently both are effectively doubled.)
+        duration: 12,
+        channels: 2,
+    },
 ]
 
 const audioContext = new AudioContext()
