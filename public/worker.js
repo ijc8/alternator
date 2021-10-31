@@ -17,6 +17,11 @@ function playSilence() {
     }
 }
 
+const STARTING = 0
+const PLAYING = 1
+const PAUSING = 2
+let state = STARTING
+
 function playAudio() {
     port.onmessage = (e) => {
         // Received empty buffer from Audio Worklet. Fill with generated samples and send it back.
@@ -45,6 +50,21 @@ function playAudio() {
             e.data.set(_buffer.subarray(pos, pos + blockLength))
             pos += blockLength
         }
+
+        // Apply envelopes to avoid clicks during state transitions (play, pause, unpause).
+        if (state === STARTING) {
+            for (let i = 0; i < e.data.length; i++) {
+                e.data[i] *= i/e.data.length
+            }
+            state = PLAYING
+        } else if (state === PAUSING) {
+            for (let i = 0; i < e.data.length; i++) {
+                e.data[i] *= 1 - i/e.data.length
+            }
+            playSilence()
+            state = STARTING
+        } 
+
         // Send updated position/status to main thread.
         self.postMessage({ pos, length: currentLength, end: pos === fullLength })
         // Send samples to AudioWorklet.
@@ -63,7 +83,7 @@ self.onmessage = async (event) => {
         if (event.data === true) {
             playAudio()
         } else if (event.data === false) {
-            playSilence()
+            state = PAUSING
         } else if (event.data.sampleRate) {
             // TODO: This is a bit of a hack; may prefer to reset by just creating a new worker.
             // (Current obstacle to that is Pyodide load time.)
