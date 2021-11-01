@@ -9,7 +9,16 @@ import './App.css'
 
 const host = "http://localhost:3000"  // "https://ijc8.me"
 
-const tracks = [
+interface Track {
+    name: string
+    title: string
+    artist: string
+    album: string
+    duration: number
+    channels: number
+}
+
+const testTracks = [
     {
         name: "pd-thing",
         title: "Some Harmonics",
@@ -93,17 +102,16 @@ async function setupAudio() {
 let _setInfo = ({ pos, length }: { pos: number, length: number }) => {}
 let _setUnderrun = (u: boolean) => {}
 
-async function play(name: string) {
+async function play(track: Track) {
     if (!setupDone) {
         await setupAudio()
     }
     audioWorklet && audioWorklet.disconnect()
     webWorker && webWorker.terminate()
-    const channels = tracks.find(track => track.name === name)!.channels
     audioWorklet = new AudioWorkletNode(audioContext, "doublebuffer", {
         numberOfInputs: 0,
         numberOfOutputs: 1,
-        outputChannelCount: [channels],
+        outputChannelCount: [track.channels],
         processorOptions: { numFrames: 1024 },
     })
     channel = new MessageChannel()
@@ -114,7 +122,7 @@ async function play(name: string) {
     webWorker = new Worker("worker.js")
     // Send sample rate and Audio Worklet's port to the Web Worker, which will generate the samples as needed.
     webWorker.postMessage({
-        path: `${host}/bundles/${name}/`,
+        path: `${host}/bundles/${track.name}/`,
         sampleRate: audioContext.sampleRate,
         port: audioWorklet.port
     }, [audioWorklet.port])
@@ -320,21 +328,11 @@ const SourceView = ({ isOpen, setIsOpen, name, title }: { isOpen: boolean, setIs
 }
 
 interface PlayState {
-    name: string
+    track: Track
     status: PlayStatus
 }
 
-let _updateTracks = (n: number) => {}
-
-async function fetchTrack() {
-    const url = prompt("Track URL")
-    const metadata = await (await fetch(`${url}/bundle.metadata`)).json()
-    console.log("Got metadata:", metadata)
-    tracks.push(metadata)
-    _updateTracks(tracks.length)
-}
-
-const Sidebar = () => {
+const Sidebar = ({ fetchTrack, fetchAlbum }: { fetchTrack: () => void, fetchAlbum: () => void }) => {
     const [underrun, setUnderrun] = useState(false)
     _setUnderrun = setUnderrun
 
@@ -342,12 +340,13 @@ const Sidebar = () => {
         <div className="glitch text-3xl relative top-8 mb-14" id="logo">
             {[...new Array(5)].map((_, i) => <div key={i}>Alternator</div>)}
         </div>
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center mb-8">
             Status
             <div className={`w-2 h-2 ml-2 mt-0.5 rounded-full ${underrun ? "bg-red-500" : "bg-green-400"}`} />
         </div>
-        {/* Temporary button for testing. */}
-        <button className="bg-white hover:bg-cyan-100 text-black rounded m-8" onClick={fetchTrack}>Fetch track</button>
+        {/* Temporary buttons for testing. */}
+        <button className="bg-white hover:bg-cyan-100 text-black rounded mx-8 my-1" onClick={fetchTrack}>Fetch track</button>
+        <button className="bg-white hover:bg-cyan-100 text-black rounded mx-8 my-1" onClick={fetchAlbum}>Fetch album</button>
     </header>
 }
 
@@ -367,7 +366,7 @@ function formatTime(seconds: number) {
 }
 
 const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPlaying: (b: boolean) => void, reset: () => void }) => {
-    const track = tracks.find(track => track.name === state?.name)
+    const track = state?.track
     const disabled = state === null || state.status ===  "setup"
     const seekBar = useRef<HTMLDivElement>(null)
     const [{ pos, length }, setInfo] = useState({ pos: 0, length: 0 })
@@ -465,14 +464,14 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
 
 const App = () => {
     const [state, _setState] = useState<PlayState | null>(null)
-    const forceUpdate = useState(0)[1]
-    _updateTracks = forceUpdate
+    const [tracks, setTracks] = useState(testTracks)
+    const [coverArt, setCoverArt] = useState("album_art.svg")
 
     const setState = async (newState: PlayState) => {
-        if (state?.name !== newState.name) {
-            _setState({ name: newState.name, status: "setup" })
-            const end = (await play(newState.name)).end
-            _setState({ name: newState.name, status: "play" });
+        if (state?.track !== newState.track) {
+            _setState({ track: newState.track, status: "setup" })
+            const end = (await play(newState.track)).end
+            _setState({ track: newState.track, status: "play" });
             await end
             _setState(null)
         } else {
@@ -481,13 +480,37 @@ const App = () => {
         }
     }
 
+    const fetchTrack = async () => {
+        const url = prompt("Track URL")
+        const metadata = await (await fetch(`${url}/bundle.metadata`)).json()
+        console.log("Got metadata:", metadata)
+        setTracks([...tracks, metadata])
+    }
+    
+    const fetchAlbum = async () => {
+        const url = prompt("Album URL")
+        const listing = await (await fetch(`${url}/listing.json`)).json()
+        console.log("Got listing:", listing)
+        setCoverArt(`${url}/${listing.cover}`)
+        const tracks = []
+        for (const name of listing.tracks) {
+            const metadata = await (await fetch(`${url}/${name}/bundle.metadata`)).json()
+            metadata.name = name
+            if (metadata.duration === undefined) {
+                metadata.duration = Infinity
+            }
+            tracks.push(metadata)
+        }
+        setTracks(tracks)
+    }
+
     return <div className="flex flex-col text-white min-h-screen max-h-screen justify-end">
         <div className="flex flex-row flex-grow min-h-0">
-            <Sidebar />
+            <Sidebar {...{ fetchTrack, fetchAlbum }} />
             <main className="flex-grow flex flex-col overflow-y-auto">
                 <div className="pt-20 pl-16 pb-6 flex flex-row items-end bg-green-900">
                     <div className="w-60 h-60 border mr-8">
-                        <img src="album_art.svg" alt="Album art" />
+                        <img src={coverArt} alt="Album cover art" />
                     </div>
                     <div className="flex flex-col items-start">
                         <h1>Example album/playlist thing</h1>
@@ -503,13 +526,13 @@ const App = () => {
                             <div className="w-1/4">Duration</div>
                         </div>
                         <div className="col-span-full border-b border-gray-700 mb-2"></div>
-                        {tracks.map(({ name, ...track }, i) =>
+                        {tracks.map((track, i) =>
                         <Track
-                            key={i} index={i} name={name} {...track}
-                            status={state?.name === name ? state.status : null}
+                            key={i} index={i} {...track}
+                            status={state && state.track === track ? state.status : null}
                             setPlaying={(playing: boolean) => {
                                 setState({
-                                    name,
+                                    track,
                                     status: playing ? "play" : "pause",
                                 })
                             }
@@ -520,19 +543,19 @@ const App = () => {
         </div>
         <Controls state={state} setPlaying={(playing: boolean) => {
             setState({
-                name: state!.name,
+                track: state!.track,
                 status: playing ? "play" : "pause",
             })
         }} reset={async () => {
-            _setState({ name: state!.name, status: "setup" })
+            _setState({ track: state!.track, status: "setup" })
             // TODO: Consistent method of resetting.
             let end
-            if (state!.name.startsWith("pd")) {
-                end = (await play(state!.name)).end
+            if (state!.track.name.startsWith("pd")) {
+                end = (await play(state!.track)).end
             } else {
                 end = (await reset()).end
             }
-            _setState({ name: state!.name, status: "play" })
+            _setState({ track: state!.track, status: "play" })
             await end
             _setState(null)        
         }} />
