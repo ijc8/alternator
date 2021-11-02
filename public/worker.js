@@ -119,11 +119,13 @@ self.onmessage = async (event) => {
             }
         }
     }
-    self.path = event.data.path
-    importScripts(`${self.path}/main.js`)
-    setup(event.data.sampleRate).then(() => {
-        _buffer = new Float32Array(HISTORY_SECONDS * event.data.sampleRate)
-        self.postMessage("setup")
-        playAudio()
-    })
+    self.path = event.data.path + "/"
+    // Load from blob to avoid MIME type complaints.
+    const code = await (await fetch(`${self.path}main.js`)).text()
+    const url = URL.createObjectURL(new Blob([code]))
+    importScripts(url)
+    await setup(event.data.sampleRate)
+    _buffer = new Float32Array(HISTORY_SECONDS * event.data.sampleRate)
+    self.postMessage("setup")
+    playAudio()
 }

@@ -7,9 +7,8 @@ import SyntaxHighlighter from 'react-syntax-highlighter'
 import { a11yDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import './App.css'
 
-const host = "http://localhost:3000"  // "https://ijc8.me"
-
 interface Track {
+    url: string
     name: string
     title: string
     artist: string
@@ -20,20 +19,13 @@ interface Track {
 
 const testTracks = [
     {
-        name: "pd-thing",
-        title: "Some Harmonics",
-        artist: "Ian Clester",
-        album: "Pretty Paltry Patches",
-        duration: 10,
-        channels: 1,
-    },
-    {
         name: "pd-thing2",
         title: "Some Harmonics (Extended Edition)",
         artist: "Ian Clester",
         album: "Pretty Paltry Patches",
         duration: 60,
         channels: 1,
+        url: "http://localhost:3000/bundles/pd-thing2",
     },
     {
         name: "py-audio-file",
@@ -42,6 +34,7 @@ const testTracks = [
         album: "Phasing: Greatest Hits (1964-2021)",
         duration: Infinity,
         channels: 1,
+        url: "http://localhost:3000/bundles/py-audio-file",
     },
     {
         name: "py-piano-phase",
@@ -50,6 +43,7 @@ const testTracks = [
         album: "Phasing: Greatest Hits (1964-2021)",
         duration: Infinity,
         channels: 1,
+        url: "http://localhost:3000/bundles/py-piano-phase",
     },
     {
         name: "beat",
@@ -58,6 +52,7 @@ const testTracks = [
         album: "Funky Functions",
         duration: Infinity,
         channels: 1,
+        url: "http://localhost:3000/bundles/beat",
     },
     {
         name: "py-stereo-test",
@@ -66,22 +61,7 @@ const testTracks = [
         album: "The Test Album",
         duration: Infinity,
         channels: 2,
-    },
-    {
-        name: "c-stereo-test",
-        title: "Stereo Test (C)",
-        artist: "Ian Clester",
-        album: "The Test Album",
-        duration: Infinity,
-        channels: 2,
-    },
-    {
-        name: "strum",
-        title: "Strum",
-        artist: "RTcmix maintainers",
-        album: "Pluck Patrol",
-        duration: 6,
-        channels: 2,
+        url: "http://localhost:3000/bundles/py-stereo-test",
     },
 ]
 
@@ -122,7 +102,7 @@ async function play(track: Track) {
     webWorker = new Worker("worker.js")
     // Send sample rate and Audio Worklet's port to the Web Worker, which will generate the samples as needed.
     webWorker.postMessage({
-        path: `${host}/bundles/${track.name}/`,
+        path: track.url,
         sampleRate: audioContext.sampleRate,
         port: audioWorklet.port
     }, [audioWorklet.port])
@@ -215,11 +195,7 @@ const PlayAnimation = () => {
 
 type PlayStatus = "setup" | "play" | "pause"
 
-const Track = ({
-    index, name, title, artist, album, duration, status, setPlaying,
-} : {
-    index: number, name: string, title: string, artist: string, album: string, duration: number, status: PlayStatus | null, setPlaying: (p: boolean) => void,
-}) => {
+const Track = ({ index, track, status, setPlaying }: { index: number, track: Track, status: PlayStatus | null, setPlaying: (p: boolean) => void }) => {
     const [hover, setHover] = useState(false)
     const [sourceOpen, setSourceOpen] = useState(false)
 
@@ -248,17 +224,17 @@ const Track = ({
                         : index + 1}
         </div>
         <div className="w-1/4">
-            {title}
-            <div className="text-gray-400 text-sm">{artist}</div>
+            {track.title}
+            <div className="text-gray-400 text-sm">{track.artist}</div>
         </div>
-        <div className="w-1/4">{album}</div>
-        <div className="w-2/12">{formatTime(duration)}</div>
+        <div className="w-1/4">{track.album}</div>
+        <div className="w-2/12">{formatTime(track.duration)}</div>
         <div className="w-1/12 hidden group-hover:block">
             <button onClick={viewSource} className="text-xl relative top-1">
                 <BsFileEarmarkCode />
             </button>
         </div>
-        <SourceView isOpen={sourceOpen} setIsOpen={setSourceOpen} name={name} title={title} />
+        <SourceView isOpen={sourceOpen} setIsOpen={setSourceOpen} track={track} />
     </div>
 }
 
@@ -267,7 +243,7 @@ interface File {
     contents: string
 }
 
-const SourceView = ({ isOpen, setIsOpen, name, title }: { isOpen: boolean, setIsOpen: (b: boolean) => void, name: string, title: string }) => {
+const SourceView = ({ isOpen, setIsOpen, track }: { isOpen: boolean, setIsOpen: (b: boolean) => void, track: Track }) => {
     const [files, setFiles] = useState<File[]>([])
     const [selectedFile, setSelectedFile] = useState<File>()
 
@@ -278,8 +254,8 @@ const SourceView = ({ isOpen, setIsOpen, name, title }: { isOpen: boolean, setIs
             return
         }
         (async () => {
-            const { files } = await (await fetch(`${host}/bundles/${name}/bundle.metadata`)).json()
-            const data = new Uint8Array(await (await fetch(`${host}/bundles/${name}/bundle.data`)).arrayBuffer())
+            const { files } = await (await fetch(`${track.url}/bundle.metadata`)).json()
+            const data = new Uint8Array(await (await fetch(`${track.url}/bundle.data`)).arrayBuffer())
             const decoder = new TextDecoder()
             for (const file of files) {
                 file.name = file.filename.substr(1)
@@ -288,7 +264,7 @@ const SourceView = ({ isOpen, setIsOpen, name, title }: { isOpen: boolean, setIs
             setFiles(files)
             setSelectedFile(files[0])
         })()
-    }, [name, isOpen])
+    }, [track, isOpen])
 
     const getLanguage = (name: string) => {
         if (name.endsWith(".py")) {
@@ -304,7 +280,7 @@ const SourceView = ({ isOpen, setIsOpen, name, title }: { isOpen: boolean, setIs
         <div className="flex items-center justify-center min-h-screen h-screen">
             <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
             <div className="relative bg-gray-700 text-white rounded max-w-full max-h-full mx-auto p-3 flex flex-col">
-                <Dialog.Title className="flex border-b mb-3"><BsFileEarmarkCode className="mr-2 text-xl" /> {title}</Dialog.Title>
+                <Dialog.Title className="flex border-b mb-3"><BsFileEarmarkCode className="mr-2 text-xl" /> {track.title}</Dialog.Title>
                 <div className="flex min-h-0">
                     <div className="bg-gray-800 mr-2">
                         <ul>
@@ -462,10 +438,22 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
     </footer>
 }
 
+interface Album {
+    url: string
+    title: string
+    cover: string
+    tracks: string[]
+}
+
 const App = () => {
     const [state, _setState] = useState<PlayState | null>(null)
     const [tracks, setTracks] = useState(testTracks)
-    const [coverArt, setCoverArt] = useState("album_art.svg")
+    const [album, setAlbum] = useState<Album>({
+        url: "http://localhost:3000",
+        title: "Built-in example album",
+        cover: "album_art.svg",
+        tracks: testTracks.map(t => t.name),
+    })
 
     const setState = async (newState: PlayState) => {
         if (state?.track !== newState.track) {
@@ -482,24 +470,27 @@ const App = () => {
 
     const fetchTrack = async () => {
         const url = prompt("Track URL")
-        const metadata = await (await fetch(`${url}/bundle.metadata`)).json()
-        console.log("Got metadata:", metadata)
-        setTracks([...tracks, metadata])
+        const track = await (await fetch(`${url}/track.json`)).json()
+        console.log("Got track info:", track)
+        track.url = url
+        setTracks([...tracks, track])
     }
     
     const fetchAlbum = async () => {
         const url = prompt("Album URL")
-        const listing = await (await fetch(`${url}/listing.json`)).json()
-        console.log("Got listing:", listing)
-        setCoverArt(`${url}/${listing.cover}`)
+        const album = await (await fetch(`${url}/album.json`)).json()
+        console.log("Got album info:", album)
+        album.url = url
+        setAlbum(album)
         const tracks = []
-        for (const name of listing.tracks) {
-            const metadata = await (await fetch(`${url}/${name}/bundle.metadata`)).json()
-            metadata.name = name
-            if (metadata.duration === undefined) {
-                metadata.duration = Infinity
+        for (const name of album.tracks) {
+            const track = await (await fetch(`${url}/${name}/track.json`)).json()
+            track.name = name
+            track.url = `${url}/${name}`
+            if (track.duration === undefined) {
+                track.duration = Infinity
             }
-            tracks.push(metadata)
+            tracks.push(track)
         }
         setTracks(tracks)
     }
@@ -510,10 +501,10 @@ const App = () => {
             <main className="flex-grow flex flex-col overflow-y-auto">
                 <div className="pt-20 pl-16 pb-6 flex flex-row items-end bg-green-900">
                     <div className="w-60 h-60 border mr-8">
-                        <img src={coverArt} alt="Album cover art" />
+                        <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
                     </div>
                     <div className="flex flex-col items-start">
-                        <h1>Example album/playlist thing</h1>
+                        <h1>{album.title}</h1>
                         <h2>Ian Clester</h2>
                     </div>
                 </div>
@@ -528,7 +519,7 @@ const App = () => {
                         <div className="col-span-full border-b border-gray-700 mb-2"></div>
                         {tracks.map((track, i) =>
                         <Track
-                            key={i} index={i} {...track}
+                            key={i} index={i} track={track}
                             status={state && state.track === track ? state.status : null}
                             setPlaying={(playing: boolean) => {
                                 setState({
@@ -550,7 +541,7 @@ const App = () => {
             _setState({ track: state!.track, status: "setup" })
             // TODO: Consistent method of resetting.
             let end
-            if (state!.track.name.startsWith("pd")) {
+            if (state!.track.url.split("/").pop()!.startsWith("pd")) {
                 end = (await play(state!.track)).end
             } else {
                 end = (await reset()).end
