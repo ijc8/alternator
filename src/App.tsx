@@ -441,19 +441,99 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
 interface Album {
     url: string
     title: string
+    artist: string
     cover: string
     tracks: string[]
+}
+
+const HomeView = ({ setAlbum }: { setAlbum: (a: Album) => void }) => {
+    const findAlbums = async () => {
+        // const response = await fetch('https://api.github.com/search/repositories?q=topic:alternator-album', {
+        //     headers: { Accept: "application/vnd.github.v3+json" }
+        // })
+        // const results = await response.json()
+        const results = { items: [{ full_name: "ijc8/example-album"}] }
+        console.log("Found:", results.items.map((result: any) => result.full_name))
+    }
+
+    useEffect(() => {
+        findAlbums()
+    }, [])
+
+    const albums = [
+        builtinAlbum,
+        {
+            url: "https://raw.githubusercontent.com/ijc8/example-album/main",
+            title: "Example Album",
+            artist: "ijc8",
+            cover: "cover.svg",
+            tracks: [],
+        }
+    ]
+
+    return <div className="pt-12 pl-16 flex-grow bg-gray-800">
+        <h1>Albums</h1>
+        <div className="flex flex-row">
+            {albums.map(album =>
+            <div className="hover:bg-gray-600 p-4">
+                <div className="w-60 h-60 border" onClick={() => setAlbum(album)}>
+                    <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
+                </div>
+                <div className="font-semibold">{album.title}</div>
+                <div className="text-gray-400">{album.artist}</div>
+            </div>)}
+        </div>
+    </div>
+}
+
+const AlbumView = ({ state, setState, album, tracks }: { state: PlayState | null, setState: (s: PlayState) => void, album: Album, tracks: Track[] }) => {
+    return <>
+        <div className="pt-20 pl-16 pb-6 flex flex-row items-end bg-green-900">
+            <div className="w-60 h-60 border mr-8">
+                <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
+            </div>
+            <div className="flex flex-col items-start">
+                <h1>{album.title}</h1>
+                <h2>Ian Clester</h2>
+            </div>
+        </div>
+        <div className="p-16 pt-4 flex-grow bg-gray-800">
+            <div className="flex flex-col">
+                <div className="flex text-gray-400 px-4">
+                    <div className="w-1/4">#</div>
+                    <div className="w-1/4">Title</div>
+                    <div className="w-1/4">Album</div>
+                    <div className="w-1/4">Duration</div>
+                </div>
+                <div className="col-span-full border-b border-gray-700 mb-2"></div>
+                {tracks.map((track, i) =>
+                <Track
+                    key={i} index={i} track={track}
+                    status={state && state.track === track ? state.status : null}
+                    setPlaying={(playing: boolean) => {
+                        setState({
+                            track,
+                            status: playing ? "play" : "pause",
+                        })
+                    }
+                } />)}
+            </div>
+        </div>
+    </>
+}
+
+const builtinAlbum = {
+    url: "http://localhost:3000",
+    title: "Built-in example album",
+    artist: "Ian Clester",
+    cover: "album_art.svg",
+    tracks: testTracks.map(t => t.name),
 }
 
 const App = () => {
     const [state, _setState] = useState<PlayState | null>(null)
     const [tracks, setTracks] = useState(testTracks)
-    const [album, setAlbum] = useState<Album>({
-        url: "http://localhost:3000",
-        title: "Built-in example album",
-        cover: "album_art.svg",
-        tracks: testTracks.map(t => t.name),
-    })
+    const [album, setAlbum] = useState<Album>()
 
     const setState = async (newState: PlayState) => {
         if (state?.track !== newState.track) {
@@ -499,37 +579,9 @@ const App = () => {
         <div className="flex flex-row flex-grow min-h-0">
             <Sidebar {...{ fetchTrack, fetchAlbum }} />
             <main className="flex-grow flex flex-col overflow-y-auto">
-                <div className="pt-20 pl-16 pb-6 flex flex-row items-end bg-green-900">
-                    <div className="w-60 h-60 border mr-8">
-                        <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
-                    </div>
-                    <div className="flex flex-col items-start">
-                        <h1>{album.title}</h1>
-                        <h2>Ian Clester</h2>
-                    </div>
-                </div>
-                <div className="p-16 pt-4 flex-grow bg-gray-800">
-                    <div className="flex flex-col">
-                        <div className="flex text-gray-400 px-4">
-                            <div className="w-1/4">#</div>
-                            <div className="w-1/4">Title</div>
-                            <div className="w-1/4">Album</div>
-                            <div className="w-1/4">Duration</div>
-                        </div>
-                        <div className="col-span-full border-b border-gray-700 mb-2"></div>
-                        {tracks.map((track, i) =>
-                        <Track
-                            key={i} index={i} track={track}
-                            status={state && state.track === track ? state.status : null}
-                            setPlaying={(playing: boolean) => {
-                                setState({
-                                    track,
-                                    status: playing ? "play" : "pause",
-                                })
-                            }
-                        } />)}
-                    </div>
-                </div>
+                {album === undefined
+                ? <HomeView setAlbum={setAlbum} />
+                : <AlbumView state={state} setState={setState} album={album} tracks={tracks} />}
             </main>
         </div>
         <Controls state={state} setPlaying={(playing: boolean) => {
