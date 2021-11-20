@@ -2,7 +2,7 @@ importScripts('pyodide/pyodide.js')
 
 async function setupPyodide() {
     self.pyodide = await loadPyodide({ indexURL: 'pyodide/' })
-    const metadata = await (await fetch(self.path + "bundle.metadata")).json()
+    const metadata = await (await fetch(self.path + "track.json")).json()
     const blob = await (await fetch(self.path + "bundle.data")).blob()
     self.pyodide.FS.mkdir("alternator")
     self.pyodide.FS.mount(self.pyodide.FS.filesystems.WORKERFS, {
@@ -36,16 +36,13 @@ let audioCallback
 async function setup(sampleRate) {
     await setupPyodidePromise
     self.pyodide.runPython(`
-from importlib import reload
 import os
 os.chdir("/alternator")
 import sys
 sys.path.append(".")
 import aleatora.streams.audio
 aleatora.streams.audio.SAMPLE_RATE = ${sampleRate}
-import main
-reload(main)
-main = main.main`)
+from main import main`)
     audioCallback = self.pyodide.runPython(`
 print("Playing:", main)
 samples = iter(main)

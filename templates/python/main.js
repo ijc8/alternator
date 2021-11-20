@@ -2,7 +2,7 @@ importScripts('pyodide/pyodide.js')
 
 async function setupPyodide() {
     self.pyodide = await loadPyodide({ indexURL: 'pyodide/' })
-    const metadata = await (await fetch(self.path + "bundle.metadata")).json()
+    const metadata = await (await fetch(self.path + "track.json")).json()
     const blob = await (await fetch(self.path + "bundle.data")).blob()
     self.pyodide.FS.mkdir("alternator")
     self.pyodide.FS.mount(self.pyodide.FS.filesystems.WORKERFS, {

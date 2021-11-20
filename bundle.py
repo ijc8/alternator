@@ -10,6 +10,18 @@ if len(sys.argv) < 3:
 bundle_dir = os.path.join(os.path.dirname(sys.argv[0]), "templates", sys.argv[1])
 root = sys.argv[2]
 
+track_info_path = os.path.join(root, "track.json")
+
+try:
+    with open(track_info_path) as f:
+        track_info = json.load(f)
+except Exception as e:
+    exit(f"Failed to open {track_info_path}:\n{e.__class__.__qualname__}: {e}")
+
+missing_fields = [field for field in ["title", "artist", "duration", "channels"] if field not in track_info]
+if missing_fields:
+    exit(f"Missing fields [{', '.join(missing_fields)}] in {track_info_path}.")
+
 files = []
 position = 0
 
@@ -31,9 +43,10 @@ def add(path):
 
 for path, _, filenames in os.walk(root):
     for filename in filenames:
-        add(os.path.join(path, filename))
+        if not (filename == "track.json" and path == root):
+            add(os.path.join(path, filename))
 
-metadata = json.dumps({
+metadata = json.dumps(track_info | {
     "files": files,
     "remote_package_size": position,
 }, separators=(",",":")).encode("utf8")
@@ -47,6 +60,6 @@ with tarfile.open(os.path.basename(os.path.abspath(root)) + ".tar.xz", "w:xz") a
     info.size = position
     data.seek(0)
     archive.addfile(info, data)
-    info = tarfile.TarInfo("bundle.metadata")
+    info = tarfile.TarInfo("track.json")
     info.size = len(metadata)
     archive.addfile(info, io.BytesIO(metadata))

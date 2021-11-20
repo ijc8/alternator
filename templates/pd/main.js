@@ -199,12 +199,12 @@ function process(output) {
       Module["preRun"].push(runWithFS); // FS is not initialized yet, wait for it
     }
   
-    Module['removeRunDependency']('bundle.metadata');
+    Module['removeRunDependency']('track.json');
    }
 
    function runMetaWithFS() {
-    Module['addRunDependency']('bundle.metadata');
-    var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('bundle.metadata', '') : 'bundle.metadata';
+    Module['addRunDependency']('track.json');
+    var REMOTE_METADATA_NAME = Module['locateFile'] ? Module['locateFile']('track.json', '') : 'track.json';
     var xhr = new XMLHttpRequest();
     xhr.onreadystatechange = function() {
      if (xhr.readyState === 4 && xhr.status === 200) {
