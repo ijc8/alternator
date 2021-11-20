@@ -308,7 +308,7 @@ interface PlayState {
     status: PlayStatus
 }
 
-const Sidebar = ({ fetchTrack, fetchAlbum }: { fetchTrack: () => void, fetchAlbum: () => void }) => {
+const Sidebar = ({ fetchTrack, fetchAlbum }: { fetchTrack: () => void, fetchAlbum: (url: string) => void }) => {
     const [underrun, setUnderrun] = useState(false)
     _setUnderrun = setUnderrun
 
@@ -322,7 +322,7 @@ const Sidebar = ({ fetchTrack, fetchAlbum }: { fetchTrack: () => void, fetchAlbu
         </div>
         {/* Temporary buttons for testing. */}
         <button className="bg-white hover:bg-cyan-100 text-black rounded mx-8 my-1" onClick={fetchTrack}>Fetch track</button>
-        <button className="bg-white hover:bg-cyan-100 text-black rounded mx-8 my-1" onClick={fetchAlbum}>Fetch album</button>
+        <button className="bg-white hover:bg-cyan-100 text-black rounded mx-8 my-1" onClick={() => fetchAlbum(prompt("Album URL")!)}>Fetch album</button>
     </header>
 }
 
@@ -523,7 +523,7 @@ const AlbumView = ({ state, setState, album, tracks }: { state: PlayState | null
 }
 
 const builtinAlbum = {
-    url: "http://localhost:3000",
+    url: "http://localhost:3000/builtin-album",
     title: "Built-in example album",
     artist: "Ian Clester",
     cover: "album_art.svg",
@@ -556,8 +556,7 @@ const App = () => {
         setTracks([...tracks, track])
     }
     
-    const fetchAlbum = async () => {
-        const url = prompt("Album URL")
+    const fetchAlbum = async (url: string) => {
         const album = await (await fetch(`${url}/album.json`)).json()
         console.log("Got album info:", album)
         album.url = url
@@ -580,7 +579,7 @@ const App = () => {
             <Sidebar {...{ fetchTrack, fetchAlbum }} />
             <main className="flex-grow flex flex-col overflow-y-auto">
                 {album === undefined
-                ? <HomeView setAlbum={setAlbum} />
+                ? <HomeView setAlbum={album => fetchAlbum(album.url)} />
                 : <AlbumView state={state} setState={setState} album={album} tracks={tracks} />}
             </main>
         </div>
