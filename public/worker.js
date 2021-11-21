@@ -8,7 +8,8 @@ let nextPos = null
 let currentLength = 0
 // Total length of the composition: number of samples generated between start and end.
 let fullLength = Infinity
-const HISTORY_SECONDS = 5 * 60
+// TODO: Implement circular buffer. Will require UI to support to indicate that old samples are no longer accessible.
+const HISTORY_SECONDS = 7 * 60
 // TODO: Investigate conflict with Emscripten-generated `buffer` (c-stereo-test).
 let _buffer = null
 

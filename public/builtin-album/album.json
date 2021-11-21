@@ -1,5 +1,5 @@
 {
     "title": "Built-in example album",
     "cover": "album_art.svg",
-    "tracks": ["pd-thing2","beat"]
+    "tracks": ["pd-thing2","beat","wav"]
 }
