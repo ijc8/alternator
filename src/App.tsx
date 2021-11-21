@@ -17,54 +17,6 @@ interface Track {
     channels: number
 }
 
-const testTracks = [
-    {
-        name: "pd-thing2",
-        title: "Some Harmonics (Extended Edition)",
-        artist: "Ian Clester",
-        album: "Pretty Paltry Patches",
-        duration: 60,
-        channels: 1,
-        url: "http://localhost:3000/bundles/pd-thing2",
-    },
-    {
-        name: "py-audio-file",
-        title: "Vocal Phasing",
-        artist: "Ian Clester",
-        album: "Phasing: Greatest Hits (1964-2021)",
-        duration: Infinity,
-        channels: 1,
-        url: "http://localhost:3000/bundles/py-audio-file",
-    },
-    {
-        name: "py-piano-phase",
-        title: "Piano(?) Phase",
-        artist: "Ian Clester",
-        album: "Phasing: Greatest Hits (1964-2021)",
-        duration: Infinity,
-        channels: 1,
-        url: "http://localhost:3000/bundles/py-piano-phase",
-    },
-    {
-        name: "beat",
-        title: "Beat",
-        artist: "Ian Clester",
-        album: "Funky Functions",
-        duration: Infinity,
-        channels: 1,
-        url: "http://localhost:3000/bundles/beat",
-    },
-    {
-        name: "py-stereo-test",
-        title: "Stereo Test (Python)",
-        artist: "Ian Clester",
-        album: "The Test Album",
-        duration: Infinity,
-        channels: 2,
-        url: "http://localhost:3000/bundles/py-stereo-test",
-    },
-]
-
 const audioContext = new AudioContext()
 
 let audioWorklet: AudioWorkletNode
@@ -475,7 +427,7 @@ const HomeView = ({ setAlbum }: { setAlbum: (a: Album) => void }) => {
         <h1>Albums</h1>
         <div className="flex flex-row">
             {albums.map(album =>
-            <div className="hover:bg-gray-600 p-4">
+            <div key={album.url} className="hover:bg-gray-600 p-4 cursor-pointer">
                 <div className="w-60 h-60 border" onClick={() => setAlbum(album)}>
                     <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
                 </div>
@@ -486,7 +438,9 @@ const HomeView = ({ setAlbum }: { setAlbum: (a: Album) => void }) => {
     </div>
 }
 
-const AlbumView = ({ state, setState, album, tracks }: { state: PlayState | null, setState: (s: PlayState) => void, album: Album, tracks: Track[] }) => {
+const AlbumView = ({ state, setState, album, tracks }: {
+    state: PlayState | null, setState: (s: PlayState) => void, album: Album, tracks?: Track[]
+}) => {
     return <>
         <div className="pt-20 pl-16 pb-6 flex flex-row items-end bg-green-900">
             <div className="w-60 h-60 border mr-8">
@@ -506,8 +460,9 @@ const AlbumView = ({ state, setState, album, tracks }: { state: PlayState | null
                     <div className="w-1/4">Duration</div>
                 </div>
                 <div className="col-span-full border-b border-gray-700 mb-2"></div>
-                {tracks.map((track, i) =>
-                <Track
+                {tracks === undefined
+                ? <div className="m-auto"><LoadAnimation /></div>
+                : tracks.map((track, i) => <Track
                     key={i} index={i} track={track}
                     status={state && state.track === track ? state.status : null}
                     setPlaying={(playing: boolean) => {
@@ -527,12 +482,12 @@ const builtinAlbum = {
     title: "Built-in example album",
     artist: "Ian Clester",
     cover: "album_art.svg",
-    tracks: testTracks.map(t => t.name),
+    tracks: [],
 }
 
 const App = () => {
     const [state, _setState] = useState<PlayState | null>(null)
-    const [tracks, setTracks] = useState(testTracks)
+    const [tracks, setTracks] = useState<Track[]>()
     const [album, setAlbum] = useState<Album>()
 
     const setState = async (newState: PlayState) => {
@@ -553,7 +508,7 @@ const App = () => {
         const track = await (await fetch(`${url}/track.json`)).json()
         console.log("Got track info:", track)
         track.url = url
-        setTracks([...tracks, track])
+        setTracks([...(tracks ?? []), track])
     }
     
     const fetchAlbum = async (url: string) => {
