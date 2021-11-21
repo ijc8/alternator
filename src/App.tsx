@@ -2,7 +2,8 @@ import { Dialog } from '@headlessui/react'
 import React, { useEffect, useRef, useState } from 'react'
 import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
 // TODO: Consider BsJournalCode when react-icons 4.3.0 isn't broken.
-import { BsFileEarmarkCode } from 'react-icons/bs'
+import { BsFileEarmarkCode, BsSearch } from 'react-icons/bs'
+import { FaHome, FaWrench } from 'react-icons/fa'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { a11yDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import './App.css'
@@ -260,21 +261,27 @@ interface PlayState {
     status: PlayStatus
 }
 
-const Sidebar = ({ fetchTrack, fetchAlbum }: { fetchTrack: () => void, fetchAlbum: (url: string) => void }) => {
+const Sidebar = ({ isHome, goHome, fetchTrack, fetchAlbum }: {
+    isHome: boolean, goHome: () => void, fetchTrack: () => void, fetchAlbum: (url: string) => void
+}) => {
     const [underrun, setUnderrun] = useState(false)
     _setUnderrun = setUnderrun
 
+    const buttonClass = "hover:bg-gray-700 p-2 font-semibold flex items-center justify-center"
+
     return <header className="w-56 bg-black flex flex-col justify-start">
-        <div className="glitch text-3xl relative top-8 mb-14" id="logo">
+        <button className="glitch text-3xl relative top-8 mb-14" id="logo" onClick={goHome}>
             {[...new Array(5)].map((_, i) => <div key={i}>Alternator</div>)}
-        </div>
+        </button>
         <div className="flex items-center justify-center mb-8">
             Status
             <div className={`w-2 h-2 ml-2 mt-0.5 rounded-full ${underrun ? "bg-red-500" : "bg-green-400"}`} />
         </div>
+        <button className={buttonClass + (isHome ? " bg-gray-800" : "")} onClick={goHome}><FaHome className="mr-2" /> Home</button>
+        <button className={buttonClass}><BsSearch className="mr-2" /> Search</button>
         {/* Temporary buttons for testing. */}
-        <button className="bg-white hover:bg-cyan-100 text-black rounded mx-8 my-1" onClick={fetchTrack}>Fetch track</button>
-        <button className="bg-white hover:bg-cyan-100 text-black rounded mx-8 my-1" onClick={() => fetchAlbum(prompt("Album URL")!)}>Fetch album</button>
+        <button className={buttonClass} onClick={fetchTrack}><FaWrench className="mr-2" /> Fetch Track</button>
+        <button className={buttonClass} onClick={() => fetchAlbum(prompt("Album URL")!)}><FaWrench className="mr-2" /> Fetch Album</button>
     </header>
 }
 
@@ -531,7 +538,7 @@ const App = () => {
 
     return <div className="flex flex-col text-white min-h-screen max-h-screen justify-end">
         <div className="flex flex-row flex-grow min-h-0">
-            <Sidebar {...{ fetchTrack, fetchAlbum }} />
+            <Sidebar isHome={album === undefined} goHome={() => setAlbum(undefined)} {...{ fetchTrack, fetchAlbum }} />
             <main className="flex-grow flex flex-col overflow-y-auto">
                 {album === undefined
                 ? <HomeView setAlbum={album => fetchAlbum(album.url)} />
