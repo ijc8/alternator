@@ -261,11 +261,14 @@ interface PlayState {
     status: PlayStatus
 }
 
-const Sidebar = ({ isHome, goHome, fetchTrack, fetchAlbum }: {
-    isHome: boolean, goHome: () => void, fetchTrack: () => void, fetchAlbum: (url: string) => void
+const Sidebar = ({ isHome, goHome, search, fetchTrack, fetchAlbum }: {
+    isHome: boolean, goHome: () => void, search: (q: string) => void, fetchTrack: () => void, fetchAlbum: (url: string) => void
 }) => {
     const [underrun, setUnderrun] = useState(false)
     _setUnderrun = setUnderrun
+
+    const [searchOpen, setSearchOpen] = useState(false)
+    const [searchQuery, setSearchQuery] = useState("")
 
     const buttonClass = "hover:bg-gray-700 p-2 font-semibold flex items-center justify-center"
 
@@ -278,7 +281,30 @@ const Sidebar = ({ isHome, goHome, fetchTrack, fetchAlbum }: {
             <div className={`w-2 h-2 ml-2 mt-0.5 rounded-full ${underrun ? "bg-red-500" : "bg-green-400"}`} />
         </div>
         <button className={buttonClass + (isHome ? " bg-gray-800" : "")} onClick={goHome}><FaHome className="mr-2" /> Home</button>
-        <button className={buttonClass}><BsSearch className="mr-2" /> Search</button>
+        <div>
+            {searchOpen
+            ? <div className="flex items-center p-2 bg-gray-800">
+                <BsSearch className="m-2" />
+                <input
+                    type="text" autoFocus={true} onBlur={() => setSearchOpen(false)} className="bg-gray-600 w-3/4 px-2 py-1"
+                    value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyPress={e => {
+                        if (e.key === "Enter") {
+                            if (!searchQuery.trim()) {
+                                setSearchOpen(false)
+                            } else {
+                                console.log("Search query:", searchQuery)
+                                setSearchOpen(false)
+                                search(searchQuery)
+                            }
+                        }
+                    }}
+                />
+            </div>
+            : <button className={buttonClass + " w-full"} onClick={() => setSearchOpen(true)}>
+                <BsSearch className="m-2" />
+                Search
+            </button>}
+        </div>
         {/* Temporary buttons for testing. */}
         <button className={buttonClass} onClick={fetchTrack}><FaWrench className="mr-2" /> Fetch Track</button>
         <button className={buttonClass} onClick={() => fetchAlbum(prompt("Album URL")!)}><FaWrench className="mr-2" /> Fetch Album</button>
@@ -405,42 +431,62 @@ interface Album {
     tracks: string[]
 }
 
-const HomeView = ({ setAlbum }: { setAlbum: (a: Album) => void }) => {
+const USE_BACKEND = false
+
+const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) => void }) => {
     const findAlbums = async () => {
-        // const response = await fetch('https://api.github.com/search/repositories?q=topic:alternator-album', {
-        //     headers: { Accept: "application/vnd.github.v3+json" }
-        // })
-        // const results = await response.json()
-        const results = { items: [{ full_name: "ijc8/example-album"}] }
-        console.log("Found:", results.items.map((result: any) => result.full_name))
+        if (USE_BACKEND) {
+            const url = 'https://api.github.com/search/repositories?q=topic:alternator-album' + (query ? "%20" + query : "")
+            const response = await fetch(url, {
+                headers: { Accept: "application/vnd.github.v3+json" }
+            })
+            const results = await response.json()
+            // const results = { items: [{ full_name: "ijc8/example-album", default_branch: "main" }] }
+            console.log("Found:", results.items.map((result: any) => result.full_name))
+            const albums = []
+            // TODO: Use `Promise.all`.
+            for (const { full_name, default_branch } of results.items) {
+                const url = `https://raw.githubusercontent.com/${full_name}/${default_branch}`
+                const response = await fetch(`${url}/album.json`)
+                const info = await response.json()
+                console.log(info)
+                albums.push({ url, ...info })
+            }
+            setAlbums(albums)
+        } else {
+            const albums = [
+                builtinAlbum,
+                {
+                    url: "https://raw.githubusercontent.com/ijc8/example-album/main",
+                    title: "Example Album",
+                    artist: "ijc8",
+                    cover: "cover.svg",
+                    tracks: [],
+                }
+            ].filter(a => query === undefined || a.title.toLowerCase().includes(query.toLowerCase()))
+            setAlbums(albums)
+        }
     }
 
     useEffect(() => {
         findAlbums()
-    }, [])
+    }, [query])
 
-    const albums = [
-        builtinAlbum,
-        {
-            url: "https://raw.githubusercontent.com/ijc8/example-album/main",
-            title: "Example Album",
-            artist: "ijc8",
-            cover: "cover.svg",
-            tracks: [],
-        }
-    ]
+    const [albums, setAlbums] = useState<Album[]>()
 
     return <div className="pt-12 pl-16 flex-grow bg-gray-800">
-        <h1>Albums</h1>
+        <h1>{query ? <>Search results for <i>{query}</i></> : "Home"}</h1>
         <div className="flex flex-row">
-            {albums.map(album =>
-            <div key={album.url} className="hover:bg-gray-600 p-4 cursor-pointer">
-                <div className="w-60 h-60 border" onClick={() => setAlbum(album)}>
-                    <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
-                </div>
-                <div className="font-semibold">{album.title}</div>
-                <div className="text-gray-400">{album.artist}</div>
-            </div>)}
+            {albums
+            ? albums.map(album =>
+                <div key={album.url} className="hover:bg-gray-600 p-4 cursor-pointer">
+                    <div className="w-60 h-60 border" onClick={() => setAlbum(album)}>
+                        <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
+                    </div>
+                    <div className="font-semibold">{album.title}</div>
+                    <div className="text-gray-400">{album.artist}</div>
+                </div>)
+            : "Loading"}
         </div>
     </div>
 }
@@ -496,6 +542,7 @@ const App = () => {
     const [state, _setState] = useState<PlayState | null>(null)
     const [tracks, setTracks] = useState<Track[]>()
     const [album, setAlbum] = useState<Album>()
+    const [query, setQuery] = useState<string>()
 
     const setState = async (newState: PlayState) => {
         if (state?.track !== newState.track) {
@@ -528,7 +575,7 @@ const App = () => {
             const track = await (await fetch(`${url}/${name}/track.json`)).json()
             track.name = name
             track.url = `${url}/${name}`
-            if (track.duration === undefined) {
+            if (track.duration === undefined || track.duration === null) {
                 track.duration = Infinity
             }
             tracks.push(track)
@@ -538,10 +585,14 @@ const App = () => {
 
     return <div className="flex flex-col text-white min-h-screen max-h-screen justify-end">
         <div className="flex flex-row flex-grow min-h-0">
-            <Sidebar isHome={album === undefined} goHome={() => setAlbum(undefined)} {...{ fetchTrack, fetchAlbum }} />
+            <Sidebar
+                isHome={album === undefined}
+                goHome={() => { setAlbum(undefined); setQuery(undefined) }} {...{ fetchTrack, fetchAlbum }}
+                search={(q: string) => { setAlbum(undefined); setQuery(q) }}
+            />
             <main className="flex-grow flex flex-col overflow-y-auto">
                 {album === undefined
-                ? <HomeView setAlbum={album => fetchAlbum(album.url)} />
+                ? <HomeView query={query} setAlbum={album => fetchAlbum(album.url)} />
                 : <AlbumView state={state} setState={setState} album={album} tracks={tracks} />}
             </main>
         </div>
