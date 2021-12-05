@@ -207,7 +207,7 @@ const SourceView = ({ isOpen, setIsOpen, track }: { isOpen: boolean, setIsOpen: 
             return
         }
         (async () => {
-            const { files } = await (await fetch(`${track.url}/bundle.metadata`)).json()
+            const { files } = await (await fetch(`${track.url}/track.json`)).json()
             const data = new Uint8Array(await (await fetch(`${track.url}/bundle.data`)).arrayBuffer())
             const decoder = new TextDecoder()
             for (const file of files) {
