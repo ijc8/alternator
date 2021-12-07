@@ -176,11 +176,11 @@ const Track = ({ index, track, status, setPlaying }: { index: number, track: Tra
                         ? <div className="relative -left-2 top-0.5"><PlayAnimation /></div>
                         : index + 1}
         </div>
-        <div className="w-1/4">
+        <div className="w-2/4">
             {track.title}
             <div className="text-gray-400 text-sm">{track.artist}</div>
         </div>
-        <div className="w-1/4">{track.album}</div>
+        {/* <div className="w-1/4">{track.album}</div> */}
         <div className="w-2/12">{formatTime(track.duration)}</div>
         <div className="w-1/12 hidden group-hover:block">
             <button onClick={viewSource} className="text-xl relative top-1">
@@ -431,17 +431,17 @@ interface Album {
     tracks: string[]
 }
 
-const USE_BACKEND = false
+const USE_BACKEND = true
 
 const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) => void }) => {
     const findAlbums = async () => {
         if (USE_BACKEND) {
+            // TODO: Local caching.
             const url = 'https://api.github.com/search/repositories?q=topic:alternator-album' + (query ? "%20" + query : "")
             const response = await fetch(url, {
                 headers: { Accept: "application/vnd.github.v3+json" }
             })
             const results = await response.json()
-            // const results = { items: [{ full_name: "ijc8/example-album", default_branch: "main" }] }
             console.log("Found:", results.items.map((result: any) => result.full_name))
             const albums = []
             // TODO: Use `Promise.all`.
@@ -455,7 +455,6 @@ const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) =>
             setAlbums(albums)
         } else {
             const albums = [
-                builtinAlbum,
                 {
                     url: "https://raw.githubusercontent.com/ijc8/example-album/main",
                     title: "Example Album",
@@ -508,8 +507,8 @@ const AlbumView = ({ state, setState, album, tracks }: {
             <div className="flex flex-col">
                 <div className="flex text-gray-400 px-4">
                     <div className="w-1/4">#</div>
-                    <div className="w-1/4">Title</div>
-                    <div className="w-1/4">Album</div>
+                    <div className="w-2/4">Title</div>
+                    {/* <div className="w-1/4">Album</div> */}
                     <div className="w-1/4">Duration</div>
                 </div>
                 <div className="col-span-full border-b border-gray-700 mb-2"></div>
@@ -528,14 +527,6 @@ const AlbumView = ({ state, setState, album, tracks }: {
             </div>
         </div>
     </>
-}
-
-const builtinAlbum = {
-    url: "http://localhost:3000/builtin-album",
-    title: "Built-in example album",
-    artist: "Ian Clester",
-    cover: "album_art.svg",
-    tracks: [],
 }
 
 const App = () => {
