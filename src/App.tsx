@@ -4,6 +4,7 @@ import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull
 // TODO: Consider BsJournalCode when react-icons 4.3.0 isn't broken.
 import { BsFileEarmarkCode, BsSearch } from 'react-icons/bs'
 import { FaHome, FaWrench } from 'react-icons/fa'
+import { FiExternalLink } from 'react-icons/fi'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { a11yDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import './App.css'
@@ -229,11 +230,23 @@ const SourceView = ({ isOpen, setIsOpen, track }: { isOpen: boolean, setIsOpen: 
         }
     }
 
+    let repoUrl = track.url
+    if (repoUrl.startsWith("https://raw.githubusercontent.com")) {
+        repoUrl = repoUrl.replace("raw.githubusercontent", "github")
+        repoUrl = repoUrl.replace("/main/", "/tree/main/")
+    }
+
     return <Dialog open={isOpen} onClose={() => setIsOpen(false)} className="fixed z-10 inset-0 overflow-y-auto">
         <div className="flex items-center justify-center min-h-screen h-screen">
             <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
             <div className="relative bg-gray-700 text-white rounded max-w-full max-h-full mx-auto p-3 flex flex-col">
-                <Dialog.Title className="flex border-b mb-3"><BsFileEarmarkCode className="mr-2 text-xl" /> {track.title}</Dialog.Title>
+                <Dialog.Title className="flex border-b mb-3 justify-between">
+                    <span><BsFileEarmarkCode className="text-xl inline-block" /> {track.title}</span>
+                    <a className="text-blue-400 ml-4" href={repoUrl} target="_blank" rel="noreferrer">
+                        View in Repository
+                        <FiExternalLink className="ml-1 inline-block" />
+                    </a>
+                </Dialog.Title>
                 <div className="flex min-h-0">
                     <div className="bg-gray-800 mr-2">
                         <ul>
@@ -246,7 +259,7 @@ const SourceView = ({ isOpen, setIsOpen, track }: { isOpen: boolean, setIsOpen: 
                         </ul>
                     </div>
                     {selectedFile
-                        ? <SyntaxHighlighter language={getLanguage(selectedFile.name)} style={a11yDark} className="max-h-full overflow-y-auto">
+                        ? <SyntaxHighlighter language={getLanguage(selectedFile.name)} style={a11yDark} className="max-h-full overflow-y-auto flex-grow">
                             {selectedFile.contents}
                         </SyntaxHighlighter>
                         : null}
@@ -482,8 +495,8 @@ const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) =>
                     <div className="w-60 h-60 border" onClick={() => setAlbum(album)}>
                         <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
                     </div>
-                    <div className="font-semibold">{album.title}</div>
-                    <div className="text-gray-400">{album.artist}</div>
+                    <div className="font-semibold mt-1">{album.title}</div>
+                    <div className="text-gray-400 -mt-1">{album.artist}</div>
                 </div>)
             : "Loading"}
         </div>
