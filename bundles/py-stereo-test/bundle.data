@@ -1,3 +1,0 @@
-from aleatora import *
-
-main = osc(200).zip(osc(300))
