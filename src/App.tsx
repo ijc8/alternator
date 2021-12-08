@@ -2,7 +2,7 @@ import { Dialog } from '@headlessui/react'
 import React, { useEffect, useRef, useState } from 'react'
 import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
 // TODO: Consider BsJournalCode when react-icons 4.3.0 isn't broken.
-import { BsFileEarmarkCode, BsSearch } from 'react-icons/bs'
+import { BsFileEarmarkCode, BsSearch, BsThreeDotsVertical } from 'react-icons/bs'
 import { FaHome, FaWrench } from 'react-icons/fa'
 import { FiExternalLink } from 'react-icons/fi'
 import SyntaxHighlighter from 'react-syntax-highlighter'
@@ -161,12 +161,26 @@ const Track = ({ index, track, status, setPlaying }: { index: number, track: Tra
         setHover(false)
     }
 
+    const onClick = () => {
+        if (window.matchMedia("(max-width: 768px)").matches) {
+            // Corresponds to Tailwind's `md:` prefix.
+            setPlaying(true)
+        }
+    }
+
     const viewSource = () => {
         setSourceOpen(true)
     }
 
-    return <div className={(status === null ? "" : "bg-gray-700 ") + "group flex items-center hover:bg-gray-600 px-4 py-2"} onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave}>
-        <div className="w-1/4">
+    const openMenu = () => {
+        // TODO
+        alert("bang!")
+    }
+
+    return <div className={(status === null ? "" : "bg-gray-700 ") + "group flex items-center hover:bg-gray-600 px-4 py-2"}
+            onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onClick={onClick}
+        >
+        <div className="w-10 hidden md:block">
             {status === "setup"
                 ? <div className="relative -left-2"><LoadAnimation /></div>
                 : hover
@@ -175,17 +189,20 @@ const Track = ({ index, track, status, setPlaying }: { index: number, track: Tra
                     </button>
                     : status === "play"
                         ? <div className="relative -left-2 top-0.5"><PlayAnimation /></div>
-                        : index + 1}
+                        : <span className="text-gray-400">{index + 1}</span>}
         </div>
-        <div className="w-2/4">
+        <div className={"flex-grow" + (status === null ? "" : " text-cyan-500")}>
             {track.title}
             <div className="text-gray-400 text-sm">{track.artist}</div>
         </div>
         {/* <div className="w-1/4">{track.album}</div> */}
-        <div className="w-2/12">{formatTime(track.duration)}</div>
-        <div className="w-1/12 hidden group-hover:block">
-            <button onClick={viewSource} className="text-xl relative top-1">
+        <div className="w-20 text-right">{formatTime(track.duration)}</div>
+        <div className="w-10 md:invisible group-hover:visible">
+            <button onClick={viewSource} className="ml-4 text-xl relative top-0.5 hidden md:block">
                 <BsFileEarmarkCode />
+            </button>
+            <button onClick={openMenu} className="text-gray-400 w-full text-right md:hidden">
+                <BsThreeDotsVertical className="inline" />
             </button>
         </div>
         <SourceView isOpen={sourceOpen} setIsOpen={setSourceOpen} track={track} />
@@ -274,8 +291,8 @@ interface PlayState {
     status: PlayStatus
 }
 
-const Sidebar = ({ isHome, goHome, search, fetchTrack, fetchAlbum }: {
-    isHome: boolean, goHome: () => void, search: (q: string) => void, fetchTrack: () => void, fetchAlbum: (url: string) => void
+const Navbar = ({ isHome, goHome, search, fetchAlbum }: {
+    isHome: boolean, goHome: () => void, search: (q: string) => void, fetchAlbum: (url: string) => void
 }) => {
     const [underrun, setUnderrun] = useState(false)
     _setUnderrun = setUnderrun
@@ -285,19 +302,19 @@ const Sidebar = ({ isHome, goHome, search, fetchTrack, fetchAlbum }: {
 
     const buttonClass = "hover:bg-gray-700 p-2 font-semibold flex items-center justify-center"
 
-    return <header className="w-56 bg-black flex flex-col justify-start">
-        <button className="glitch text-3xl relative top-8 mb-14" id="logo" onClick={goHome}>
+    return <header className="bg-black flex items-center p-1 justify-evenly md:justify-start md:flex-col md:w-56 md:items-stretch">
+        <button className="glitch text-3xl relative top-8 mb-14 hidden md:block" id="logo" onClick={goHome}>
             {[...new Array(5)].map((_, i) => <div key={i}>Alternator</div>)}
         </button>
-        <div className="flex items-center justify-center mb-8">
+        <div className="items-center justify-center mb-8 hidden md:flex">
             Status
             <div className={`w-2 h-2 ml-2 mt-0.5 rounded-full ${underrun ? "bg-red-500" : "bg-green-400"}`} />
         </div>
         <button className={buttonClass + (isHome ? " bg-gray-800" : "")} onClick={goHome}><FaHome className="mr-2" /> Home</button>
-        <div>
+        <div className="w-1/3 md:w-full">
             {searchOpen
-            ? <div className="flex items-center p-2 bg-gray-800">
-                <BsSearch className="m-2" />
+            ? <div className="flex items-center p-1 md:px-2 bg-gray-800">
+                <BsSearch className="mr-2" />
                 <input
                     type="text" autoFocus={true} onBlur={() => setSearchOpen(false)} className="bg-gray-600 w-3/4 px-2 py-1"
                     value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyPress={e => {
@@ -314,13 +331,12 @@ const Sidebar = ({ isHome, goHome, search, fetchTrack, fetchAlbum }: {
                 />
             </div>
             : <button className={buttonClass + " w-full"} onClick={() => setSearchOpen(true)}>
-                <BsSearch className="m-2" />
+                <BsSearch className="mr-2" />
                 Search
             </button>}
         </div>
         {/* Temporary buttons for testing. */}
-        <button className={buttonClass} onClick={fetchTrack}><FaWrench className="mr-2" /> Fetch Track</button>
-        <button className={buttonClass} onClick={() => fetchAlbum(prompt("Album URL")!)}><FaWrench className="mr-2" /> Fetch Album</button>
+        <button className={buttonClass} onClick={() => fetchAlbum(prompt("Album URL")!)}><FaWrench className="mr-2" /> Load Album</button>
     </header>
 }
 
@@ -388,24 +404,24 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
 
     const displayPos = seekPos ?? pos
 
-    return <footer className="bg-gray-900 flex justify-between items-center px-4 py-6">
-        <div className="w-1/4">
-            {track && <>
-                <div>{track.title}</div>
+    return <footer className="bg-gray-900 flex flex-col md:flex-row justify-between md:items-center px-4 py-2 md:py-6">
+        <div className="w-full md:w-1/4">
+            {track && <div className="flex items-end justify-between md:block">
+                <div className="font-semibold">{track.title}</div>
                 <div className="text-gray-400 text-sm">{track.artist}</div>
-            </>}
+            </div>}
         </div>
-        <div className="w-5/12">
+        <div className="w-full md:w-5/12 flex md:block">
             <div className="flex justify-center text-3xl">
-                <button disabled={disabled} className="disabled:text-gray-500" onClick={reset}><BiSkipPrevious /></button>
+                <button disabled={disabled} className="disabled:text-gray-500 hidden md:block" onClick={reset}><BiSkipPrevious /></button>
                 <button disabled={disabled} className="disabled:text-gray-500 text-4xl">
                     {state?.status === "play"
                         ? <BiPauseCircle onClick={() => setPlaying(false)} />
                         : <BiPlayCircle onClick={() => setPlaying(true)} />}
                 </button>
-                <button disabled={disabled} className="disabled:text-gray-500"><BiSkipNext /></button>
+                <button disabled={disabled} className="disabled:text-gray-500 hidden md:block"><BiSkipNext /></button>
             </div>
-            <div className="flex justify-between items-center text-gray-400 text-sm select-none">
+            <div className="flex flex-grow justify-between items-center text-gray-400 text-sm select-none">
                 {duration && <div className="text-right w-12">{formatTime(Math.floor(displayPos / audioContext.sampleRate))}</div>}
                 <div ref={seekBar} className="group mx-2 py-2 w-full" onClick={seek} onMouseDown={(e) => {
                     trackSeek(e)
@@ -429,7 +445,7 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
                 {duration && <div className="w-12">{formatTime(Math.floor(duration / audioContext.sampleRate))}</div>}
             </div>
         </div>
-        <div className="w-1/4 flex justify-end items-center">
+        <div className="w-1/4 hidden md:flex justify-end items-center">
             <BiVolumeFull className="text-gray-400 mr-2" />
             <div className="bg-gray-500 w-32 h-1"></div>
         </div>
@@ -486,8 +502,8 @@ const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) =>
 
     const [albums, setAlbums] = useState<Album[]>()
 
-    return <div className="pt-12 pl-16 flex-grow bg-gray-800">
-        <h1>{query ? <>Search results for <i>{query}</i></> : "Home"}</h1>
+    return <div className="p-6 md:pt-12 md:pl-16 flex-grow bg-gray-800">
+        <h1 className="text-3xl hidden md:block">{query ? <>Search results for <i>{query}</i></> : "Home"}</h1>
         <div className="flex flex-row">
             {albums
             ? albums.map(album =>
@@ -507,22 +523,23 @@ const AlbumView = ({ state, setState, album, tracks }: {
     state: PlayState | null, setState: (s: PlayState) => void, album: Album, tracks?: Track[]
 }) => {
     return <>
-        <div className="pt-20 pl-16 pb-6 flex flex-row items-end bg-green-900">
-            <div className="w-60 h-60 border mr-8">
+        <div className="flex flex-col items-center py-3 md:pt-20 md:pl-16 md:pb-6 md:flex-row md:items-end bg-green-900">
+            <div className="w-60 h-60 border md:mr-8">
                 <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
             </div>
-            <div className="flex flex-col items-start">
-                <h1>{album.title}</h1>
+            <div className="flex flex-col items-start mt-3">
+                <h1 className="font-semibold text-3xl md:text-5xl">{album.title}</h1>
                 <h2>Ian Clester</h2>
             </div>
         </div>
-        <div className="p-16 pt-4 flex-grow bg-gray-800">
+        <div className="md:p-16 pt-4 flex-grow bg-gray-800">
             <div className="flex flex-col">
                 <div className="flex text-gray-400 px-4">
-                    <div className="w-1/4">#</div>
-                    <div className="w-2/4">Title</div>
+                    <div className="w-10 hidden md:block">#</div>
+                    <div className="flex-grow">Title</div>
                     {/* <div className="w-1/4">Album</div> */}
-                    <div className="w-1/4">Duration</div>
+                    <div className="w-20 text-right">Duration</div>
+                    <div className="w-10">{/* View Source / Mobile Menu */}</div>
                 </div>
                 <div className="col-span-full border-b border-gray-700 mb-2"></div>
                 {tracks === undefined
@@ -560,14 +577,6 @@ const App = () => {
             _setState(newState)
         }
     }
-
-    const fetchTrack = async () => {
-        const url = prompt("Track URL")
-        const track = await (await fetch(`${url}/track.json`)).json()
-        console.log("Got track info:", track)
-        track.url = url
-        setTracks([...(tracks ?? []), track])
-    }
     
     const fetchAlbum = async (url: string) => {
         const album = await (await fetch(`${url}/album.json`)).json()
@@ -588,11 +597,12 @@ const App = () => {
     }
 
     return <div className="flex flex-col text-white min-h-screen max-h-screen justify-end">
-        <div className="flex flex-row flex-grow min-h-0">
-            <Sidebar
+        <div className="flex flex-col md:flex-row flex-grow min-h-0">
+            <Navbar
                 isHome={album === undefined}
-                goHome={() => { setAlbum(undefined); setQuery(undefined) }} {...{ fetchTrack, fetchAlbum }}
+                goHome={() => { setAlbum(undefined); setQuery(undefined) }}
                 search={(q: string) => { setAlbum(undefined); setQuery(q) }}
+                fetchAlbum={fetchAlbum}
             />
             <main className="flex-grow flex flex-col overflow-y-auto">
                 {album === undefined
