@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
 // TODO: Consider BsJournalCode when react-icons 4.3.0 isn't broken.
 import { BsFileEarmarkCode, BsSearch, BsThreeDotsVertical } from 'react-icons/bs'
-import { FaHome, FaWrench } from 'react-icons/fa'
+import { FaHome, FaInfoCircle, FaWrench } from 'react-icons/fa'
 import { FiExternalLink } from 'react-icons/fi'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { a11yDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
@@ -33,8 +33,8 @@ async function setupAudio() {
     setupDone = true
 }
 
-let _setInfo = ({ pos, length }: { pos: number, length: number }) => {}
-let _setUnderrun = (u: boolean) => {}
+let _setInfo = ({ pos, length }: { pos: number, length: number }) => { }
+let _setUnderrun = (u: boolean) => { }
 
 async function play(track: Track) {
     if (!setupDone) {
@@ -105,8 +105,8 @@ const LoadAnimation = () => {
 
 const PlayAnimation = () => {
     return <>
-    <style>
-        {`#playing #inner {
+        <style>
+            {`#playing #inner {
             animation: 1s linear 0s infinite normal none running propagate;
         }
 
@@ -127,22 +127,22 @@ const PlayAnimation = () => {
                 fill-opacity: 0;
             }
         }`}
-    </style>
-    <svg id="playing" fill="#0cf" width="8mm" viewBox="0 0 15.65 9.69" xmlns="http://www.w3.org/2000/svg">
-        <g transform="translate(-2.67)">
-            <path className="animate-pulse" d="m10.7 3.02 1.48 3.96h-.56l-.9-2.37-1.1 2.37h-.57l1.41-3.08-.2-.57q-.14-.36-.45-.36h-.28v-.45h.34q.65.01.83.5z" />
-            <g id="inner">
-                <path d="M78.24 103.48h.55q.5.8.76 1.57.25.77.25 1.52 0 .77-.25 1.54t-.76 1.57h-.55q.45-.78.67-1.55.23-.77.23-1.56 0-.78-.23-1.54-.22-.77-.67-1.55z" strokeWidth=".17" transform="matrix(.76335 0 0 1 -46.85 -101.71)" />
-                <path d="M80.35 103.48h.54q.51.8.76 1.57.26.77.26 1.52 0 .77-.26 1.54-.25.77-.76 1.57h-.54q.45-.78.67-1.55.22-.77.22-1.56 0-.78-.22-1.54-.22-.77-.67-1.55z" strokeWidth=".17" transform="matrix(-.76335 0 0 1 69.46 -101.71)" />
+        </style>
+        <svg id="playing" fill="#0cf" width="8mm" viewBox="0 0 15.65 9.69" xmlns="http://www.w3.org/2000/svg">
+            <g transform="translate(-2.67)">
+                <path className="animate-pulse" d="m10.7 3.02 1.48 3.96h-.56l-.9-2.37-1.1 2.37h-.57l1.41-3.08-.2-.57q-.14-.36-.45-.36h-.28v-.45h.34q.65.01.83.5z" />
+                <g id="inner">
+                    <path d="M78.24 103.48h.55q.5.8.76 1.57.25.77.25 1.52 0 .77-.25 1.54t-.76 1.57h-.55q.45-.78.67-1.55.23-.77.23-1.56 0-.78-.23-1.54-.22-.77-.67-1.55z" strokeWidth=".17" transform="matrix(.76335 0 0 1 -46.85 -101.71)" />
+                    <path d="M80.35 103.48h.54q.51.8.76 1.57.26.77.26 1.52 0 .77-.26 1.54-.25.77-.76 1.57h-.54q.45-.78.67-1.55.22-.77.22-1.56 0-.78-.22-1.54-.22-.77-.67-1.55z" strokeWidth=".17" transform="matrix(-.76335 0 0 1 69.46 -101.71)" />
+                </g>
+                <g id="middle">
+                    <path d="M15.63.75h.72q.67 1.06 1 2.07.34 1.02.34 2.02t-.33 2.02q-.34 1.02-1.01 2.08h-.72q.6-1.03.9-2.05.29-1.01.29-2.05 0-1.04-.3-2.05-.3-1-.89-2.04zM4.87.75h-.72q-.67 1.06-1 2.07-.34 1.02-.34 2.02t.33 2.02q.34 1.02 1 2.08h.73q-.6-1.03-.9-2.05-.29-1.01-.29-2.05 0-1.04.3-2.05.29-1 .89-2.04z" transform="matrix(.76335 0 0 1 2.67 0)" />
+                </g>
+                <g id="outer">
+                    <path d="M18.06 0h.85q.8 1.25 1.19 2.45.4 1.2.4 2.39 0 1.19-.4 2.4-.4 1.2-1.19 2.45h-.85q.7-1.22 1.05-2.42.35-1.2.35-2.43 0-1.23-.35-2.42-.34-1.2-1.05-2.42zM2.44 0h-.85Q.79 1.25.39 2.45 0 3.65 0 4.84q0 1.19.4 2.4.4 1.2 1.19 2.45h.85q-.7-1.22-1.05-2.42-.35-1.2-.35-2.43 0-1.23.35-2.42.34-1.2 1.05-2.42z" transform="matrix(.76335 0 0 1 2.67 0)" />
+                </g>
             </g>
-            <g id="middle">
-                <path d="M15.63.75h.72q.67 1.06 1 2.07.34 1.02.34 2.02t-.33 2.02q-.34 1.02-1.01 2.08h-.72q.6-1.03.9-2.05.29-1.01.29-2.05 0-1.04-.3-2.05-.3-1-.89-2.04zM4.87.75h-.72q-.67 1.06-1 2.07-.34 1.02-.34 2.02t.33 2.02q.34 1.02 1 2.08h.73q-.6-1.03-.9-2.05-.29-1.01-.29-2.05 0-1.04.3-2.05.29-1 .89-2.04z" transform="matrix(.76335 0 0 1 2.67 0)"/>
-            </g>
-            <g id="outer">
-                <path d="M18.06 0h.85q.8 1.25 1.19 2.45.4 1.2.4 2.39 0 1.19-.4 2.4-.4 1.2-1.19 2.45h-.85q.7-1.22 1.05-2.42.35-1.2.35-2.43 0-1.23-.35-2.42-.34-1.2-1.05-2.42zM2.44 0h-.85Q.79 1.25.39 2.45 0 3.65 0 4.84q0 1.19.4 2.4.4 1.2 1.19 2.45h.85q-.7-1.22-1.05-2.42-.35-1.2-.35-2.43 0-1.23.35-2.42.34-1.2 1.05-2.42z" transform="matrix(.76335 0 0 1 2.67 0)"/>
-            </g>
-        </g>
-    </svg>
+        </svg>
     </>
 
 }
@@ -152,6 +152,8 @@ type PlayStatus = "setup" | "play" | "pause"
 const Track = ({ index, track, status, setPlaying }: { index: number, track: Track, status: PlayStatus | null, setPlaying: (p: boolean) => void }) => {
     const [hover, setHover] = useState(false)
     const [sourceOpen, setSourceOpen] = useState(false)
+    // Only on mobile
+    const [menuOpen, setMenuOpen] = useState(false)
 
     const onMouseEnter = () => {
         setHover(true)
@@ -172,14 +174,9 @@ const Track = ({ index, track, status, setPlaying }: { index: number, track: Tra
         setSourceOpen(true)
     }
 
-    const openMenu = () => {
-        // TODO
-        alert("bang!")
-    }
-
-    return <div className={(status === null ? "" : "bg-gray-700 ") + "group flex items-center hover:bg-gray-600 px-4 py-2"}
-            onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onClick={onClick}
-        >
+    return <div className={(status === null ? "" : "bg-gray-700 ") + "group flex items-center hover:bg-gray-600 active:translate-y-px active:translate-x-px md:active:translate-x-0 md:active:translate-y-0 px-4 py-2"}
+        onMouseEnter={onMouseEnter} onMouseLeave={onMouseLeave} onClick={onClick}
+    >
         <div className="w-10 hidden md:block">
             {status === "setup"
                 ? <div className="relative -left-2"><LoadAnimation /></div>
@@ -201,11 +198,29 @@ const Track = ({ index, track, status, setPlaying }: { index: number, track: Tra
             <button onClick={viewSource} className="ml-4 text-xl relative top-0.5 hidden md:block">
                 <BsFileEarmarkCode />
             </button>
-            <button onClick={openMenu} className="text-gray-400 w-full text-right md:hidden">
+            <button onClick={e => { e.stopPropagation(); setMenuOpen(true) }} className="text-gray-400 w-full text-right md:hidden">
                 <BsThreeDotsVertical className="inline" />
             </button>
         </div>
         <SourceView isOpen={sourceOpen} setIsOpen={setSourceOpen} track={track} />
+        {/* Only on mobile */}
+        <Dialog open={menuOpen} onClose={() => setMenuOpen(false)} className="fixed z-10 inset-0 overflow-y-auto">
+            <div className="flex items-center justify-center min-h-screen h-screen">
+                <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+                <div className="relative bg-gray-700 text-white rounded max-w-full max-h-full mx-auto p-3 flex flex-col">
+                    <Dialog.Title className="flex border-b pb-2 mb-3 justify-between">
+                        <span><FaInfoCircle className="text-xl inline-block" /> Info</span>
+                    </Dialog.Title>
+                    <div className="grid" style={{ gridTemplateColumns: "auto auto" }}>
+                        <div className="text-gray-400">Title</div><div>{track.title}</div>
+                        <div className="text-gray-400">Artist</div><div>{track.artist}</div>
+                        <div className="text-gray-400 pr-3">Duration</div><div>{formatTime(track.duration)}</div>
+                        <div className="text-gray-400">Source</div>
+                        <button className="text-left text-cyan-500" onClick={() => { setMenuOpen(false); viewSource() }}>View Source</button>
+                    </div>
+                </div>
+            </div>
+        </Dialog>
     </div>
 }
 
@@ -256,8 +271,8 @@ const SourceView = ({ isOpen, setIsOpen, track }: { isOpen: boolean, setIsOpen: 
     return <Dialog open={isOpen} onClose={() => setIsOpen(false)} className="fixed z-10 inset-0 overflow-y-auto">
         <div className="flex items-center justify-center min-h-screen h-screen">
             <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
-            <div className="relative bg-gray-700 text-white rounded max-w-full max-h-full mx-auto p-3 flex flex-col">
-                <Dialog.Title className="flex border-b mb-3 justify-between">
+            <div className="relative bg-gray-700 text-white rounded max-w-full mx-auto p-3 flex flex-col" style={{ maxHeight: "89%" }}>
+                <Dialog.Title className="flex border-b pb-2 mb-3 justify-between">
                     <span><BsFileEarmarkCode className="text-xl inline-block" /> {track.title}</span>
                     <a className="text-blue-400 ml-4" href={repoUrl} target="_blank" rel="noreferrer">
                         View in Repository
@@ -265,8 +280,8 @@ const SourceView = ({ isOpen, setIsOpen, track }: { isOpen: boolean, setIsOpen: 
                     </a>
                 </Dialog.Title>
                 <div className="flex min-h-0">
-                    <div className="bg-gray-800 mr-2">
-                        <ul>
+                    <div className="bg-gray-800 mr-2 overflow-auto" style={{ minWidth: "5rem" }}>
+                        <ul className="max-h-full min-w-max">
                             {files.map(file =>
                                 <li key={file.name} className={(file === selectedFile ? "bg-blue-600 " : "") + "px-2"}
                                     onClick={() => setSelectedFile(file)}>
@@ -313,27 +328,27 @@ const Navbar = ({ isHome, goHome, search, fetchAlbum }: {
         <button className={buttonClass + (isHome ? " bg-gray-800" : "")} onClick={goHome}><FaHome className="mr-2" /> Home</button>
         <div className="w-1/3 md:w-full">
             {searchOpen
-            ? <div className="flex items-center p-1 md:px-2 bg-gray-800">
-                <BsSearch className="mr-2" />
-                <input
-                    type="text" autoFocus={true} onBlur={() => setSearchOpen(false)} className="bg-gray-600 w-3/4 px-2 py-1"
-                    value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyPress={e => {
-                        if (e.key === "Enter") {
-                            if (!searchQuery.trim()) {
-                                setSearchOpen(false)
-                            } else {
-                                console.log("Search query:", searchQuery)
-                                setSearchOpen(false)
-                                search(searchQuery)
+                ? <div className="flex items-center p-1 md:px-2 bg-gray-800">
+                    <BsSearch className="mr-2" />
+                    <input
+                        type="text" autoFocus={true} onBlur={() => setSearchOpen(false)} className="bg-gray-600 w-3/4 px-2 py-1"
+                        value={searchQuery} onChange={e => setSearchQuery(e.target.value)} onKeyPress={e => {
+                            if (e.key === "Enter") {
+                                if (!searchQuery.trim()) {
+                                    setSearchOpen(false)
+                                } else {
+                                    console.log("Search query:", searchQuery)
+                                    setSearchOpen(false)
+                                    search(searchQuery)
+                                }
                             }
-                        }
-                    }}
-                />
-            </div>
-            : <button className={buttonClass + " w-full"} onClick={() => setSearchOpen(true)}>
-                <BsSearch className="mr-2" />
-                Search
-            </button>}
+                        }}
+                    />
+                </div>
+                : <button className={buttonClass + " w-full"} onClick={() => setSearchOpen(true)}>
+                    <BsSearch className="mr-2" />
+                    Search
+                </button>}
         </div>
         {/* Temporary buttons for testing. */}
         <button className={buttonClass} onClick={() => fetchAlbum(prompt("Album URL")!)}><FaWrench className="mr-2" /> Load Album</button>
@@ -357,9 +372,10 @@ function formatTime(seconds: number) {
 
 const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPlaying: (b: boolean) => void, reset: () => void }) => {
     const track = state?.track
-    const disabled = state === null || state.status ===  "setup"
+    const disabled = state === null || state.status === "setup"
     const seekBar = useRef<HTMLDivElement>(null)
-    const [{ pos, length }, setInfo] = useState({ pos: 0, length: 0 })
+    const [info, setInfo] = useState({ pos: 0, length: 0 })
+    const { pos, length } = state?.status === "setup" ? { pos: 0, length: 0 } : info
     const duration = track && (track.duration === Infinity
         ? length + 10 * audioContext.sampleRate
         : track.duration * audioContext.sampleRate)
@@ -415,9 +431,11 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
             <div className="flex justify-center text-3xl">
                 <button disabled={disabled} className="disabled:text-gray-500 hidden md:block" onClick={reset}><BiSkipPrevious /></button>
                 <button disabled={disabled} className="disabled:text-gray-500 text-4xl">
-                    {state?.status === "play"
-                        ? <BiPauseCircle onClick={() => setPlaying(false)} />
-                        : <BiPlayCircle onClick={() => setPlaying(true)} />}
+                    {state?.status === "setup"
+                        ? <div className="py-1.5"><LoadAnimation /></div>
+                        : state?.status === "play"
+                            ? <BiPauseCircle onClick={() => setPlaying(false)} />
+                            : <BiPlayCircle onClick={() => setPlaying(true)} />}
                 </button>
                 <button disabled={disabled} className="disabled:text-gray-500 hidden md:block"><BiSkipNext /></button>
             </div>
@@ -430,8 +448,8 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
                 }}>
                     {duration && <div className="w-full flex relative">
                         <div className="absolute w-full h-1 bg-gradient-split" style={{
-                              backgroundSize: "12px 4px",
-                              backgroundPosition: `${Math.max(pos, length) / duration * 100}%`
+                            backgroundSize: "12px 4px",
+                            backgroundPosition: `${Math.max(pos, length) / duration * 100}%`
                         }} />
                         <div className="bg-gray-500 h-1 relative" style={{ width: `${length / duration * 100}%` }}>
                             {duration && <>
@@ -490,7 +508,14 @@ const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) =>
                     artist: "ijc8",
                     cover: "cover.svg",
                     tracks: [],
-                }
+                },
+                {
+                    url: "https://raw.githubusercontent.com/ijc8/demo-reel/main",
+                    title: "Offline Mode",
+                    artist: "ijc8",
+                    cover: "album_art.svg",
+                    tracks: [],
+                },
             ].filter(a => query === undefined || a.title.toLowerCase().includes(query.toLowerCase()))
             setAlbums(albums)
         }
@@ -504,17 +529,17 @@ const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) =>
 
     return <div className="p-6 md:pt-12 md:pl-16 flex-grow bg-gray-800">
         <h1 className="text-3xl hidden md:block">{query ? <>Search results for <i>{query}</i></> : "Home"}</h1>
-        <div className="flex flex-row">
+        <div className="flex flex-col items-center md:flex-row">
             {albums
-            ? albums.map(album =>
-                <div key={album.url} className="hover:bg-gray-600 p-4 cursor-pointer">
-                    <div className="w-60 h-60 border" onClick={() => setAlbum(album)}>
-                        <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
-                    </div>
-                    <div className="font-semibold mt-1">{album.title}</div>
-                    <div className="text-gray-400 -mt-1">{album.artist}</div>
-                </div>)
-            : "Loading"}
+                ? albums.map(album =>
+                    <div key={album.url} className="hover:bg-gray-600 p-4 cursor-pointer">
+                        <div className="w-60 h-60 border" onClick={() => setAlbum(album)}>
+                            <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
+                        </div>
+                        <div className="font-semibold mt-1">{album.title}</div>
+                        <div className="text-gray-400 -mt-1">{album.artist}</div>
+                    </div>)
+                : "Loading"}
         </div>
     </div>
 }
@@ -543,17 +568,17 @@ const AlbumView = ({ state, setState, album, tracks }: {
                 </div>
                 <div className="col-span-full border-b border-gray-700 mb-2"></div>
                 {tracks === undefined
-                ? <div className="m-auto"><LoadAnimation /></div>
-                : tracks.map((track, i) => <Track
-                    key={i} index={i} track={track}
-                    status={state && state.track === track ? state.status : null}
-                    setPlaying={(playing: boolean) => {
-                        setState({
-                            track,
-                            status: playing ? "play" : "pause",
-                        })
-                    }
-                } />)}
+                    ? <div className="m-auto"><LoadAnimation /></div>
+                    : tracks.map((track, i) => <Track
+                        key={i} index={i} track={track}
+                        status={state && state.track === track ? state.status : null}
+                        setPlaying={(playing: boolean) => {
+                            setState({
+                                track,
+                                status: playing ? "play" : "pause",
+                            })
+                        }
+                        } />)}
             </div>
         </div>
     </>
@@ -577,7 +602,7 @@ const App = () => {
             _setState(newState)
         }
     }
-    
+
     const fetchAlbum = async (url: string) => {
         const album = await (await fetch(`${url}/album.json`)).json()
         console.log("Got album info:", album)
@@ -606,8 +631,8 @@ const App = () => {
             />
             <main className="flex-grow flex flex-col overflow-y-auto">
                 {album === undefined
-                ? <HomeView query={query} setAlbum={album => fetchAlbum(album.url)} />
-                : <AlbumView state={state} setState={setState} album={album} tracks={tracks} />}
+                    ? <HomeView query={query} setAlbum={album => fetchAlbum(album.url)} />
+                    : <AlbumView state={state} setState={setState} album={album} tracks={tracks} />}
             </main>
         </div>
         <Controls state={state} setPlaying={(playing: boolean) => {
@@ -626,7 +651,7 @@ const App = () => {
             }
             _setState({ track: state!.track, status: "play" })
             await end
-            _setState(null)        
+            _setState(null)
         }} />
     </div>
 }
