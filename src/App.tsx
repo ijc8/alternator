@@ -621,7 +621,7 @@ const App = () => {
         setTracks(tracks)
     }
 
-    return <div className="flex flex-col text-white min-h-screen max-h-screen justify-end">
+    return <div className="flex flex-col text-white min-h-full max-h-full justify-end">
         <div className="flex flex-col md:flex-row flex-grow min-h-0">
             <Navbar
                 isHome={album === undefined}
