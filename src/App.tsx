@@ -247,9 +247,13 @@ const SourceView = ({ isOpen, setIsOpen, track }: { isOpen: boolean, setIsOpen: 
             const data = new Uint8Array(await (await fetch(`${track.url}/bundle.data`)).arrayBuffer())
             const decoder = new TextDecoder()
             for (const file of files) {
-                file.name = file.filename.substr(1)
+                file.name = file.filename
                 file.contents = decoder.decode(data.subarray(file.start, file.end))
             }
+            files.push({
+                name: "main.js",
+                contents: await (await fetch(`${track.url}/main.js`)).text()
+            })
             setFiles(files)
             setSelectedFile(files[0])
         })()
