@@ -1,6 +1,6 @@
 import { Dialog } from '@headlessui/react'
 import React, { useEffect, useRef, useState } from 'react'
-import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull, BiPauseCircle } from 'react-icons/bi'
+import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull, BiPauseCircle, BiVolumeLow, BiVolumeMute } from 'react-icons/bi'
 // TODO: Consider BsJournalCode when react-icons 4.3.0 isn't broken.
 import { BsFileEarmarkCode, BsSearch, BsThreeDotsVertical } from 'react-icons/bs'
 import { FaHome, FaInfoCircle, FaWrench } from 'react-icons/fa'
@@ -21,6 +21,7 @@ interface Track {
 
 const audioContext = new AudioContext()
 
+let gain: GainNode
 let audioWorklet: AudioWorkletNode
 let channel: MessageChannel
 let webWorker: Worker
@@ -28,6 +29,8 @@ let setupDone = false
 
 async function setupAudio() {
     await audioContext.resume()
+    gain = new GainNode(audioContext)
+    gain.connect(audioContext.destination)
     console.log("Sample rate:", audioContext.sampleRate)
     await audioContext.audioWorklet.addModule("worklet.js")
     setupDone = true
@@ -60,7 +63,7 @@ async function play(track: Track) {
         sampleRate: audioContext.sampleRate,
         port: audioWorklet.port
     }, [audioWorklet.port])
-    audioWorklet.connect(audioContext.destination)
+    audioWorklet.connect(gain)
     return new Promise<{ end: Promise<void> }>(resolveSetup => {
         webWorker.onmessage = () => {
             resolveSetup({
@@ -463,11 +466,56 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
                 {duration && <div className="w-12">{formatTime(Math.floor(duration / audioContext.sampleRate))}</div>}
             </div>
         </div>
-        <div className="w-1/4 hidden md:flex justify-end items-center">
-            <BiVolumeFull className="text-gray-400 mr-2" />
-            <div className="bg-gray-500 w-32 h-1"></div>
-        </div>
+        <VolumeControl />
     </footer>
+}
+
+const VolumeControl = () => {
+    const [volume, setVolume] = useState(1)
+    const volumeBar = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (!gain) return
+        if (volume === 0) {
+            // Slider is all the way down: mute
+            gain.gain.value = 0
+        } else {
+            const db = (volume - 1) * 64
+            gain.gain.value = 10**(db/20)
+            console.log(db, gain.gain.value)
+        }
+    }, [volume])
+
+    const mouseMove = (event: MouseEvent | React.MouseEvent) => {
+        if (!volumeBar.current) return
+        const el = volumeBar.current
+        const frac = (event.clientX - el.offsetLeft) / el.clientWidth
+        setVolume(Math.max(0, Math.min(frac, 1)))
+    }
+
+    const mouseUp = () => {
+        document.removeEventListener("mousemove", mouseMove)
+        document.removeEventListener("mouseup", mouseUp)
+    }
+
+    const VolumeIcon = (
+        volume > 0.5 ? BiVolumeFull :
+        volume > 0 ? BiVolumeLow :
+        BiVolumeMute
+    )
+
+    return <div className="w-1/4 hidden md:flex justify-end items-center">
+        <VolumeIcon className="text-gray-400 mr-2" />
+        <div ref={volumeBar} className="relative w-32 h-1 py-2 -top-0.5"
+            onMouseDown={e => {
+                mouseMove(e)
+                document.addEventListener("mousemove", mouseMove)
+                document.addEventListener("mouseup", mouseUp)
+        }}>
+            <div className="absolute bg-gray-600 h-1 w-full"></div>
+            <div className="relative bg-gray-400 h-1" style={{ width: `${volume * 100}%` }}></div>
+        </div>
+    </div>
 }
 
 interface Album {

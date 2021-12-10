@@ -8,8 +8,8 @@ let nextPos = null
 let currentLength = 0
 // Total length of the composition: number of samples generated between start and end.
 let fullLength = Infinity
-// TODO: Implement circular buffer. Will require UI to support to indicate that old samples are no longer accessible.
-const HISTORY_SECONDS = 7 * 60
+
+const HISTORY_SECONDS = 10 * 60
 // TODO: Investigate conflict with Emscripten-generated `buffer` (c-stereo-test).
 let _buffer = null
 
@@ -31,9 +31,16 @@ function playAudio() {
         // Uncomment to force occasional underruns:
         // for (let j = 0; j < (1 << 25); j++) {}
 
-        // TODO: Use `buffer` as a circular buffer, in case we hit `HISTORY_SECONDS`.
         const blockLength = e.data.length
         while (pos + blockLength > currentLength) {
+            if (currentLength + blockLength > _buffer.length) {
+                // Double history buffer length.
+                // TODO: We should cap this at some point, and then use `_buffer` as a circular buffer.
+                // (Will require UI to support to indicate that old samples are no longer accessible.)
+                const newBuffer = new Float32Array(_buffer.length * 2)
+                newBuffer.set(_buffer)
+                _buffer = newBuffer
+            }
             const length = process(_buffer.subarray(currentLength, currentLength + blockLength))
             currentLength += length
             if (length < blockLength) {
