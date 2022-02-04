@@ -658,6 +658,7 @@ const App = () => {
     const fetchAlbum = async (url: string) => {
         const album = await (await fetch(`${url}/album.json`)).json()
         console.log("Got album info:", album)
+        window.history.pushState(null, "", "/?" + new URLSearchParams({ u: url }))
         album.url = url
         setAlbum(album)
         const tracks = []
@@ -673,11 +674,21 @@ const App = () => {
         setTracks(tracks)
     }
 
+    useEffect(() => {
+        if (window.location.search) {
+            const params = new URLSearchParams(window.location.search)
+            const url = params.get("u")
+            if (url) {
+                fetchAlbum(url)
+            }
+        }
+    }, [])
+
     return <div className="flex flex-col text-white min-h-full max-h-full justify-end">
         <div className="flex flex-col md:flex-row flex-grow min-h-0">
             <Navbar
                 isHome={album === undefined}
-                goHome={() => { setAlbum(undefined); setQuery(undefined) }}
+                goHome={() => { window.history.pushState(null, "", "/"); setAlbum(undefined); setQuery(undefined) }}
                 search={(q: string) => { setAlbum(undefined); setQuery(q) }}
                 fetchAlbum={fetchAlbum}
             />
