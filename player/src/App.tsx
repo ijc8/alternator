@@ -5,6 +5,7 @@ import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull
 import { BsFileEarmarkCode, BsSearch, BsThreeDotsVertical } from 'react-icons/bs'
 import { FaHome, FaInfoCircle, FaWrench } from 'react-icons/fa'
 import { FiExternalLink } from 'react-icons/fi'
+import { filetypemime } from 'magic-bytes.js'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { a11yDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import './App.css'
@@ -229,7 +230,43 @@ const Track = ({ index, track, status, setPlaying }: { index: number, track: Tra
 
 interface File {
     name: string
-    contents: string
+    contents: Uint8Array
+}
+
+const FileViewer = ({ name, contents }: { name: string, contents: Uint8Array }) => {
+    const ref = useRef<HTMLDivElement>(null)
+
+    useEffect(() => {
+        if (ref.current === null) return
+        const result = filetypemime(contents as any)[0] ?? "text/plain"
+        if (result.startsWith("audio/")) {
+            const blob = new Blob([contents], { type: result })
+            const audio = document.createElement("audio")
+            audio.src = window.URL.createObjectURL(blob)
+            audio.controls = true
+            ref.current.className = ""
+            // Previously had a loop to remove a child nodes,
+            // but in Firefox that was much slower than simply setting innerHTML.
+            ref.current.innerHTML = ""
+            ref.current.appendChild(audio)
+        } else {
+            const highlightWorker = new Worker("highlightWorker.js")
+            ref.current.className = "hljs"
+            const text = new TextDecoder().decode(contents)
+            ref.current.innerHTML = text
+            highlightWorker.onmessage = (event) => {
+                if (ref.current === null) return
+                ref.current.className = `language-${event.data.language} hljs`
+                ref.current.innerHTML = event.data.value
+            }
+            highlightWorker.postMessage(text)
+            return () => { highlightWorker.terminate() }
+        }
+    }, [contents])
+
+    return <pre className="max-h-full overflow-y-auto flex-grow">
+        <code ref={ref}></code>
+    </pre>
 }
 
 const SourceView = ({ isOpen, setIsOpen, track }: { isOpen: boolean, setIsOpen: (b: boolean) => void, track: Track }) => {
@@ -245,29 +282,18 @@ const SourceView = ({ isOpen, setIsOpen, track }: { isOpen: boolean, setIsOpen: 
         (async () => {
             const { files } = await (await fetch(`${track.url}/track.json`)).json()
             const data = new Uint8Array(await (await fetch(`${track.url}/bundle.data`)).arrayBuffer())
-            const decoder = new TextDecoder()
             for (const file of files) {
                 file.name = file.filename
-                file.contents = decoder.decode(data.subarray(file.start, file.end))
+                file.contents = data.subarray(file.start, file.end)
             }
             files.push({
                 name: "main.js",
-                contents: await (await fetch(`${track.url}/main.js`)).text()
+                contents: await (await fetch(`${track.url}/main.js`)).arrayBuffer()
             })
             setFiles(files)
             setSelectedFile(files[0])
         })()
     }, [track, isOpen])
-
-    const getLanguage = (name: string) => {
-        if (name.endsWith(".py")) {
-            return "python"
-        } else if (name.endsWith(".js")) {
-            return "javascript"
-        } else {
-            return "text"
-        }
-    }
 
     let repoUrl = track.url
     if (repoUrl.startsWith("https://raw.githubusercontent.com")) {
@@ -287,21 +313,24 @@ const SourceView = ({ isOpen, setIsOpen, track }: { isOpen: boolean, setIsOpen: 
                     </a>
                 </Dialog.Title>
                 <div className="flex min-h-0">
-                    <div className="bg-gray-800 mr-2 overflow-auto" style={{ minWidth: "5rem" }}>
-                        <ul className="max-h-full min-w-max">
-                            {files.map(file =>
-                                <li key={file.name} className={(file === selectedFile ? "bg-blue-600 " : "") + "px-2"}
-                                    onClick={() => setSelectedFile(file)}>
-                                    {file.name}
-                                </li>
-                            )}
-                        </ul>
-                    </div>
                     {selectedFile
-                        ? <SyntaxHighlighter language={getLanguage(selectedFile.name)} style={a11yDark} className="max-h-full overflow-y-auto flex-grow">
-                            {selectedFile.contents}
-                        </SyntaxHighlighter>
-                        : null}
+                    ? <>
+                        <div className="bg-gray-800 mr-2 overflow-auto" style={{ minWidth: "5rem" }}>
+                            <ul className="max-h-full min-w-max">
+                                {files.map(file =>
+                                    <li key={file.name} className={(file === selectedFile ? "bg-blue-600 " : "") + "px-2"}
+                                        onClick={() => setSelectedFile(file)}>
+                                        {file.name}
+                                    </li>
+                                )}
+                            </ul>
+                        </div>
+                        <FileViewer name={selectedFile.name} contents={selectedFile.contents} />
+                    </>
+                    : <div className="w-full flex justify-center">
+                        <LoadAnimation />
+                        <span className="ml-2">Loading...</span>
+                    </div>}
                 </div>
             </div>
         </div>
