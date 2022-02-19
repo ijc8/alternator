@@ -687,7 +687,7 @@ const App = () => {
     const fetchAlbum = async (url: string) => {
         const album = await (await fetch(`${url}/album.json`)).json()
         console.log("Got album info:", album)
-        window.history.pushState(null, "", "/?" + new URLSearchParams({ u: url }))
+        window.history.pushState(null, "", "?" + new URLSearchParams({ u: url }))
         album.url = url
         setAlbum(album)
         const tracks = []
@@ -717,7 +717,7 @@ const App = () => {
         <div className="flex flex-col md:flex-row flex-grow min-h-0">
             <Navbar
                 isHome={album === undefined}
-                goHome={() => { window.history.pushState(null, "", "/"); setAlbum(undefined); setQuery(undefined) }}
+                goHome={() => { window.history.pushState(null, "", window.location.pathname); setAlbum(undefined); setQuery(undefined) }}
                 search={(q: string) => { setAlbum(undefined); setQuery(q) }}
                 fetchAlbum={fetchAlbum}
             />
