@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull, BiPauseCircle, BiVolumeLow, BiVolumeMute } from 'react-icons/bi'
 // TODO: Consider BsJournalCode when react-icons 4.3.0 isn't broken.
 import { BsFileEarmarkCode, BsSearch, BsThreeDotsVertical } from 'react-icons/bs'
-import { FaHome, FaInfoCircle, FaWrench } from 'react-icons/fa'
+import { FaDice, FaHome, FaInfoCircle, FaWrench } from 'react-icons/fa'
 import { FiExternalLink } from 'react-icons/fi'
 import { filetypemime } from 'magic-bytes.js'
 import SyntaxHighlighter from 'react-syntax-highlighter'
@@ -67,11 +67,13 @@ async function play(track: Track) {
     audioWorklet.connect(gain)
     return new Promise<{ end: Promise<void> }>(resolveSetup => {
         webWorker.onmessage = () => {
+            startAnimation()
             resolveSetup({
                 end: new Promise<void>(resolveEnd => {
                     webWorker.onmessage = (event) => {
                         _setInfo(event.data)
                         if (event.data.end) {
+                            stopAnimation()
                             resolveEnd()
                         }
                     }
@@ -79,6 +81,39 @@ async function play(track: Track) {
             })
         }
     })
+}
+
+async function processImageData(imageData: ImageData) {
+    const bkp = webWorker.onmessage!.bind(webWorker)
+    const p = new Promise<ImageData>(resolve => {
+        webWorker.onmessage = (event) => {
+            if (event.data.image) resolve(event.data.image)
+            else bkp(event)
+        }
+    })
+    webWorker.postMessage({ image: imageData })
+    return p
+}
+
+let animInterval = 0
+
+function startAnimation() {
+    const ctx = _canvas.getContext('2d')!
+    // ctx.fillStyle = "green"
+    // ctx.ellipse(0, 0, 100, 100, 0, 0, 2*Math.PI)
+    // ctx.fill()
+    const imgData = ctx.createImageData(512, 512)
+    const f = async () => {
+        let imageData = await processImageData(imgData)
+        ctx.putImageData(imageData, 0, 0)
+        animInterval = window.requestAnimationFrame(f)
+    }
+    animInterval = window.requestAnimationFrame(f)
+}
+
+function stopAnimation() {
+    window.cancelAnimationFrame(animInterval)
+    animInterval = 0
 }
 
 async function reset() {
@@ -388,6 +423,10 @@ const Navbar = ({ isHome, goHome, search, fetchAlbum }: {
         </div>
         {/* Temporary buttons for testing. */}
         <button className={buttonClass} onClick={() => fetchAlbum(prompt("Album URL")!)}><FaWrench className="mr-2" /> Load Album</button>
+        <div className="justify-center flex mt-2">
+            <FaDice className="mr-2" />
+            <input className="w-2/5 text-white-500 bg-gray-700 px-2 text-center" type="text" placeholder="Seed" />
+        </div>
     </header>
 }
 
@@ -559,7 +598,9 @@ interface Album {
     tracks: string[]
 }
 
-const USE_BACKEND = true
+const USE_BACKEND = false
+
+let _canvas: HTMLCanvasElement
 
 const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) => void }) => {
     const findAlbums = async () => {
@@ -591,7 +632,7 @@ const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) =>
                     tracks: [],
                 },
                 {
-                    url: "https://raw.githubusercontent.com/ijc8/demo-reel/main",
+                    url: window.location.origin + "/demo-reel",
                     title: "Offline Mode",
                     artist: "ijc8",
                     cover: "album_art.svg",
@@ -628,10 +669,26 @@ const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) =>
 const AlbumView = ({ state, setState, album, tracks }: {
     state: PlayState | null, setState: (s: PlayState) => void, album: Album, tracks?: Track[]
 }) => {
+    const canvas = useRef<HTMLCanvasElement>(null)
+    _canvas = canvas.current!
+
+    useEffect(() => {
+        const cnvs = canvas.current!
+        const ctx = cnvs.getContext('2d')!
+        const image = new Image()
+        image.onload = () => {
+            ctx.imageSmoothingEnabled = false
+            ctx.clearRect(0, 0, cnvs.width, cnvs.height)
+            ctx.drawImage(image, 0, 0, cnvs.width, cnvs.height)
+        }
+        image.src = `${album.url}/${album.cover}`
+    }, [album])
+
     return <>
-        <div className="flex flex-col items-center py-3 md:pt-20 md:pl-16 md:pb-6 md:flex-row md:items-end bg-green-900">
-            <div className="w-60 h-60 border md:mr-8">
-                <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
+        <div className="flex flex-col items-center py-3 pt-6 bg-green-900">
+            <div className="w-96 h-96 border md:mr-8">
+                {/* <img src={`${album.url}/${album.cover}`} alt="Album cover art" /> */}
+                <canvas ref={canvas} width={512} height={512} className="w-full h-full" />
             </div>
             <div className="flex flex-col items-start mt-3">
                 <h1 className="font-semibold text-3xl md:text-5xl">{album.title}</h1>
@@ -681,6 +738,11 @@ const App = () => {
         } else {
             webWorker.postMessage(newState.status === "play")
             _setState(newState)
+            if (newState.status === "play") {
+                startAnimation()
+            } else {
+                stopAnimation()
+            }
         }
     }
 

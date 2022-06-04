@@ -96,7 +96,11 @@ self.onmessage = async (event) => {
     playSilence()
     // All futures messages will change the play state (play/pause/seek).
     self.onmessage = (event) => {
-        if (event.data === true) {
+        if (event.data.image) {
+            const image = event.data.image
+            processVideo(image.data)
+            self.postMessage({ image })
+        } else if (event.data === true) {
             // Play.
             playAudio()
         } else if (event.data === false) {
