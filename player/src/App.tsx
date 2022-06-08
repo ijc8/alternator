@@ -629,13 +629,13 @@ const AlbumView = ({ state, setState, album, tracks }: {
     state: PlayState | null, setState: (s: PlayState) => void, album: Album, tracks?: Track[]
 }) => {
     return <>
-        <div className="flex flex-col items-center py-3 md:pt-20 md:pl-16 md:pb-6 md:flex-row md:items-end bg-green-900">
+        <div className="flex flex-col items-center py-3 md:pt-20 md:pl-16 md:pb-6 md:flex-row md:items-end bg-cyan-600">
             <div className="w-60 h-60 border md:mr-8">
                 <img src={`${album.url}/${album.cover}`} alt="Album cover art" />
             </div>
             <div className="flex flex-col items-start mt-3">
                 <h1 className="font-semibold text-3xl md:text-5xl">{album.title}</h1>
-                <h2>Ian Clester</h2>
+                <h2>{album.artist}</h2>
             </div>
         </div>
         <div className="md:p-16 pt-4 flex-grow bg-gray-800">
@@ -687,7 +687,7 @@ const App = () => {
     const fetchAlbum = async (url: string) => {
         const album = await (await fetch(`${url}/album.json`)).json()
         console.log("Got album info:", album)
-        window.history.pushState(null, "", "?" + new URLSearchParams({ u: url }))
+        window.history.pushState(null, "", "?u=" + url)
         album.url = url
         setAlbum(album)
         const tracks = []
