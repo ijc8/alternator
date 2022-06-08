@@ -1,15 +1,22 @@
-import io
 import json
 import os
+import shutil
 import sys
-import tarfile
 
 if len(sys.argv) < 3:
-    exit(f"Usage: {sys.argv[0]} platform directory")
+    name = os.path.basename(sys.argv[0])
+    exit(f"""
+{name} is a utility to bundle up your composition for Alternator.
 
-bundle_dir = os.path.join(os.path.dirname(sys.argv[0]), "templates", sys.argv[1])
+Usage: {name} <template name> <composition directory>
+Available templates: {', '.join(os.listdir(os.path.join(os.path.dirname(sys.argv[0]), "templates")))}
+""".strip())
+
+template = sys.argv[1]
+template_dir = os.path.join(os.path.dirname(sys.argv[0]), "templates", template)
 root = sys.argv[2]
 
+# Check for track metadata.
 track_info_path = os.path.join(root, "track.json")
 
 try:
@@ -22,44 +29,45 @@ missing_fields = [field for field in ["title", "artist", "duration", "channels"]
 if missing_fields:
     exit(f"Missing fields [{', '.join(missing_fields)}] in {track_info_path}.")
 
+# Create output directory for bundle.
+bundle_dir = os.path.join("bundles", os.path.basename(os.path.abspath(root)))
+print("Creating output directory:", bundle_dir)
+os.makedirs(bundle_dir, exist_ok=True)
+
+# Copy over main.js (and main.wasm, if applicable) from template to bundle.
+print(f"Copying main.js from {template} template.")
+shutil.copy(os.path.join(template_dir, "main.js"), bundle_dir)
+if os.path.exists(os.path.join(template_dir, "main.wasm")):
+    print(f"Copying main.wasm from {template} template.")
+    shutil.copy(os.path.join(template_dir, "main.wasm"), bundle_dir)
+
+# Bundle up assets required by the composition.
 files = []
 position = 0
+with open(os.path.join(bundle_dir, "bundle.data"), "wb") as bundle_data:
+    for path, _, filenames in os.walk(root):
+        for filename in filenames:
+            if filename == "track.json" and path == root:
+                continue
+            path_in_bundle = os.path.abspath(os.path.join("/", os.path.relpath(path, root), filename))
+            print("Bundling", path_in_bundle)
 
-data = io.BytesIO()
+            start = position
+            with open(os.path.join(path, filename), "rb") as file:
+                position += bundle_data.write(file.read())
+            files.append({
+                "filename": path_in_bundle,
+                "start": start,
+                "end": position,
+            })
 
-def add(path):
-    relpath = os.path.join(os.path.relpath(path, root))
-    print("Bundling", relpath)
-
-    global position
-    start = position
-    with open(path, "rb") as file:
-        position += data.write(file.read())
-    files.append({
-        "filename": os.path.join("/", relpath),
-        "start": start,
-        "end": position,
-    })
-
-for path, _, filenames in os.walk(root):
-    for filename in filenames:
-        if not (filename == "track.json" and path == root):
-            add(os.path.join(path, filename))
-
-metadata = json.dumps(track_info | {
+# Finalize & save track metadata in bundle.
+track_info |= {
     "files": files,
     "remote_package_size": position,
-}, separators=(",",":")).encode("utf8")
+}
+print("Saving finalized track.json.")
+with open(os.path.join(bundle_dir, "track.json"), "w") as f:
+    json.dump(track_info, f, separators=(",",":"))
 
-with tarfile.open(os.path.basename(os.path.abspath(root)) + ".tar.xz", "w:xz") as archive:
-    os.chdir(bundle_dir)
-    archive.add("main.js")
-    if os.path.exists("main.wasm"):
-        archive.add("main.wasm")
-    info = tarfile.TarInfo("bundle.data")
-    info.size = position
-    data.seek(0)
-    archive.addfile(info, data)
-    info = tarfile.TarInfo("track.json")
-    info.size = len(metadata)
-    archive.addfile(info, io.BytesIO(metadata))
+print(f"Finished bundle: {bundle_dir}")
