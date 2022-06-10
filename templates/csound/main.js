@@ -90,9 +90,6 @@ Module.expectedDataFileDownloads = 0;
 Module.expectedDataFileDownloads++;
 (function() {
 var loadPackage = function(metadata) {
-
-  console.log("????")
-
   var PACKAGE_PATH = '';
   if (typeof window === 'object') {
     PACKAGE_PATH = window['encodeURIComponent'](window.location.pathname.toString().substring(0, window.location.pathname.toString().lastIndexOf('/')) + '/');
