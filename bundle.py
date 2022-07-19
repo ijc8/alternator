@@ -36,11 +36,12 @@ print("Creating output directory:", bundle_dir)
 os.makedirs(bundle_dir, exist_ok=True)
 
 # Copy over main.js (and main.wasm, if applicable) from template to bundle.
-print(f"Copying main.js from {template} template.")
-shutil.copy(os.path.join(template_dir, "main.js"), bundle_dir)
-if os.path.exists(os.path.join(template_dir, "main.wasm")):
-    print(f"Copying main.wasm from {template} template.")
-    shutil.copy(os.path.join(template_dir, "main.wasm"), bundle_dir)
+if template:
+    print(f"Copying main.js from {template} template.")
+    shutil.copy(os.path.join(template_dir, "main.js"), bundle_dir)
+    if os.path.exists(os.path.join(template_dir, "main.wasm")):
+        print(f"Copying main.wasm from {template} template.")
+        shutil.copy(os.path.join(template_dir, "main.wasm"), bundle_dir)
 
 # Bundle up assets required by the composition.
 files = []
