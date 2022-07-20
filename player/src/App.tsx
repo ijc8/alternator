@@ -6,9 +6,9 @@ import { BsFileEarmarkCode, BsSearch, BsThreeDotsVertical } from 'react-icons/bs
 import { FaHome, FaInfoCircle, FaWrench } from 'react-icons/fa'
 import { FiExternalLink } from 'react-icons/fi'
 import { filetypemime } from 'magic-bytes.js'
-import SyntaxHighlighter from 'react-syntax-highlighter'
-import { a11yDark } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import './App.css'
+
+type Duration = { min: number, max: number }
 
 interface Track {
     url: string
@@ -16,7 +16,7 @@ interface Track {
     title: string
     artist: string
     album: string
-    duration: number
+    duration: Duration
     channels: number
 }
 
@@ -197,7 +197,7 @@ const Track = ({ index, track, status, setPlaying }: { index: number, track: Tra
             <div className="text-gray-400 text-sm">{track.artist}</div>
         </div>
         {/* <div className="w-1/4">{track.album}</div> */}
-        <div className="w-20 text-right">{formatTime(track.duration)}</div>
+        <div className="w-20 text-right">{formatDuration(track.duration)}</div>
         <div className="w-10 md:invisible group-hover:visible">
             <button onClick={viewSource} className="ml-4 text-xl relative top-0.5 hidden md:block">
                 <BsFileEarmarkCode />
@@ -218,7 +218,7 @@ const Track = ({ index, track, status, setPlaying }: { index: number, track: Tra
                     <div className="grid" style={{ gridTemplateColumns: "auto auto" }}>
                         <div className="text-gray-400">Title</div><div>{track.title}</div>
                         <div className="text-gray-400">Artist</div><div>{track.artist}</div>
-                        <div className="text-gray-400 pr-3">Duration</div><div>{formatTime(track.duration)}</div>
+                        <div className="text-gray-400 pr-3">Duration</div><div>{formatDuration(track.duration)}</div>
                         <div className="text-gray-400">Source</div>
                         <button className="text-left text-cyan-500" onClick={() => { setMenuOpen(false); viewSource() }}>View Source</button>
                     </div>
@@ -391,6 +391,10 @@ const Navbar = ({ isHome, goHome, search, fetchAlbum }: {
     </header>
 }
 
+function formatDuration({ min, max }: Duration) {
+    return min === max ? formatTime(min) : `${formatTime(min)} – ${formatTime(max)}`
+}
+
 function formatTime(seconds: number) {
     if (seconds === Infinity) {
         return "∞"
@@ -412,9 +416,13 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
     const seekBar = useRef<HTMLDivElement>(null)
     const [info, setInfo] = useState({ pos: 0, length: 0 })
     const { pos, length } = state?.status === "setup" ? { pos: 0, length: 0 } : info
-    const duration = track && (track.duration === Infinity
-        ? length + 10 * audioContext.sampleRate
-        : track.duration * audioContext.sampleRate)
+    let duration
+    if (track) {
+        let { min, max } = track.duration
+        if (min === Infinity) min = 0
+        const sr = audioContext.sampleRate
+        duration = Math.min(Math.max(min * sr, length + 10 * sr), max * sr)
+    }
     const [seekPos, setSeekPos] = useState<number>()
     const durationRef = useRef(duration)
     durationRef.current = duration
@@ -695,9 +703,12 @@ const App = () => {
             const track = await (await fetch(`${url}/${name}/track.json`)).json()
             track.name = name
             track.url = `${url}/${name}`
-            if (track.duration === undefined || track.duration === null) {
-                track.duration = Infinity
+            track.duration ??= Infinity
+            if (typeof track.duration === "number") {
+                track.duration = { min: track.duration, max: track.duration }
             }
+            track.duration.min ??= Infinity
+            track.duration.max ??= Infinity
             tracks.push(track)
         }
         setTracks(tracks)
