@@ -1,8 +1,7 @@
 import { Dialog } from '@headlessui/react'
 import React, { useEffect, useRef, useState } from 'react'
 import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull, BiPauseCircle, BiVolumeLow, BiVolumeMute } from 'react-icons/bi'
-// TODO: Consider BsJournalCode when react-icons 4.3.0 isn't broken.
-import { BsFileEarmarkCode, BsSearch, BsThreeDotsVertical } from 'react-icons/bs'
+import { BsJournalCode, BsSearch, BsThreeDotsVertical } from 'react-icons/bs'
 import { FaHome, FaInfoCircle, FaWrench } from 'react-icons/fa'
 import { FiExternalLink } from 'react-icons/fi'
 import { filetypemime } from 'magic-bytes.js'
@@ -200,7 +199,7 @@ const Track = ({ index, track, status, setPlaying }: { index: number, track: Tra
         <div className="w-20 text-right">{formatDuration(track.duration)}</div>
         <div className="w-10 md:invisible group-hover:visible">
             <button onClick={viewSource} className="ml-4 text-xl relative top-0.5 hidden md:block">
-                <BsFileEarmarkCode />
+                <BsJournalCode />
             </button>
             <button onClick={e => { e.stopPropagation(); setMenuOpen(true) }} className="text-gray-400 w-full text-right md:hidden">
                 <BsThreeDotsVertical className="inline" />
@@ -306,7 +305,7 @@ const SourceView = ({ isOpen, setIsOpen, track }: { isOpen: boolean, setIsOpen: 
             <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
             <div className="relative bg-gray-700 text-white rounded max-w-full mx-auto p-3 flex flex-col" style={{ maxHeight: "89%" }}>
                 <Dialog.Title className="flex border-b pb-2 mb-3 justify-between">
-                    <span><BsFileEarmarkCode className="text-xl inline-block" /> {track.title}</span>
+                    <span><BsJournalCode className="text-xl inline-block" /> {track.title}</span>
                     <a className="text-blue-400 ml-4" href={repoUrl} target="_blank" rel="noreferrer">
                         View in Repository
                         <FiExternalLink className="ml-1 inline-block" />
@@ -567,7 +566,7 @@ interface Album {
     tracks: string[]
 }
 
-const USE_BACKEND = true
+const USE_BACKEND = false
 
 const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) => void }) => {
     const findAlbums = async () => {
@@ -599,7 +598,7 @@ const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) =>
                     tracks: [],
                 },
                 {
-                    url: "https://raw.githubusercontent.com/ijc8/demo-reel/main",
+                    url: "http://localhost:3000/demo-reel/",
                     title: "Offline Mode",
                     artist: "ijc8",
                     cover: "album_art.svg",
