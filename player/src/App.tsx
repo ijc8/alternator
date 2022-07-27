@@ -1,7 +1,7 @@
 import { Dialog } from '@headlessui/react'
 import React, { useEffect, useRef, useState } from 'react'
 import { BiPlay, BiPause, BiSkipPrevious, BiSkipNext, BiPlayCircle, BiVolumeFull, BiPauseCircle, BiVolumeLow, BiVolumeMute } from 'react-icons/bi'
-import { BsJournalCode, BsSearch, BsThreeDotsVertical } from 'react-icons/bs'
+import { BsInfoCircle, BsJournalCode, BsSearch, BsThreeDotsVertical } from 'react-icons/bs'
 import { FaHome, FaInfoCircle, FaWrench } from 'react-icons/fa'
 import { FiExternalLink } from 'react-icons/fi'
 import { filetypemime } from 'magic-bytes.js'
@@ -341,8 +341,8 @@ interface PlayState {
     status: PlayStatus
 }
 
-const Navbar = ({ isHome, goHome, search, fetchAlbum }: {
-    isHome: boolean, goHome: () => void, search: (q: string) => void, fetchAlbum: (url: string) => void
+const Navbar = ({ isHome, goHome, search, fetchAlbum, about }: {
+    isHome: boolean, goHome: () => void, search: (q: string) => void, fetchAlbum: (url: string) => void, about: () => void
 }) => {
     const [underrun, setUnderrun] = useState(false)
     _setUnderrun = setUnderrun
@@ -387,6 +387,7 @@ const Navbar = ({ isHome, goHome, search, fetchAlbum }: {
         </div>
         {/* Temporary buttons for testing. */}
         <button className={buttonClass} onClick={() => fetchAlbum(prompt("Album URL")!)}><FaWrench className="mr-2" /> Load Album</button>
+        <button className={buttonClass} onClick={() => about()}><BsInfoCircle className="mr-2" /> About</button>
     </header>
 }
 
@@ -672,11 +673,48 @@ const AlbumView = ({ state, setState, album, tracks }: {
     </>
 }
 
+const About = ({ isOpen, dismiss }: { isOpen: boolean, dismiss: () => void }) => {
+    const linkClass = "underline text-cyan-400 hover:text-cyan-500"
+    return <Dialog open={isOpen} onClose={dismiss} className="fixed z-10 inset-0 overflow-y-auto">
+        <div className="flex items-center justify-center min-h-screen h-screen">
+            <Dialog.Overlay className="fixed inset-0 bg-black opacity-30" />
+            <div className="relative bg-gray-700 text-white rounded max-w-full mx-auto p-3 flex flex-col" style={{ maxHeight: "89%" }}>
+                <Dialog.Title className="flex border-b pb-2 mb-3 justify-between">
+                    <span><BsInfoCircle className="text-xl inline-block mr-1" /> About Alternator</span>
+                </Dialog.Title>
+                <div className="max-w-lg">
+                    Alternator is a <strong>general-purpose generative music player</strong>.<br/><br/>
+
+                    It is a <strong>generative music</strong> player in that it can play tracks that may generate audio endlessly,
+                    or turn out differently every time due to the use of random values.<br/><br/>
+
+                    It is <strong>general-purpose</strong> in that it represents generative tracks using a
+                    general, low-level executable format (using <a className={linkClass} href="https://webassembly.org/">WebAssembly</a>) that is suitable for use with many different compositional tools and synthesis languages.<br/><br/>
+
+                    The goal is to make it <strong>easier to distribute generative music</strong> by distributing executable bundles generate audio on the fly and safely run in the browser,
+                    rather than streaming static (pre-rendered) audio from a server or requiring listeners to install untrusted executables.<br/><br/>
+
+                    For more information:<br/>
+                    <ul className="list-disc ml-8">
+                        <li>Repository: <a className={linkClass} href="https://github.com/ijc8/alternator">https://github.com/ijc8/alternator</a></li>
+                        <li>Paper: <a className={linkClass} href="https://doi.org/10.5281/zenodo.6767436">https://doi.org/10.5281/zenodo.6767436</a></li>
+                        <li>Talk: <a className={linkClass} href="https://youtu.be/CE74b76B2Rw?t=20793s">https://youtu.be/CE74b76B2Rw?t=20793s</a></li>
+                    </ul>
+                    <br/>
+                    Alternator is an ongoing research project. Please reach out if you are interested in contributing to it, building on it, or composing for it.<br/>
+                    &mdash; Ian Clester (<a className={linkClass} href="https://ijc8.me">ijc8.me</a>)
+                </div>
+            </div>
+        </div>
+    </Dialog>
+}
+
 const App = () => {
     const [state, _setState] = useState<PlayState | null>(null)
     const [tracks, setTracks] = useState<Track[]>()
     const [album, setAlbum] = useState<Album>()
     const [query, setQuery] = useState<string>()
+    const [showAbout, setShowAbout] = useState(false)
 
     const setState = async (newState: PlayState) => {
         if (state?.track !== newState.track) {
@@ -730,6 +768,7 @@ const App = () => {
                 goHome={() => { window.history.pushState(null, "", window.location.pathname); setAlbum(undefined); setQuery(undefined) }}
                 search={(q: string) => { setAlbum(undefined); setQuery(q) }}
                 fetchAlbum={fetchAlbum}
+                about={() => setShowAbout(true)}
             />
             <main className="flex-grow flex flex-col overflow-y-auto">
                 {album === undefined
@@ -755,6 +794,7 @@ const App = () => {
             await end
             _setState(null)
         }} />
+        <About isOpen={showAbout} dismiss={() => setShowAbout(false)} />
     </div>
 }
 
