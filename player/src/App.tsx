@@ -39,12 +39,16 @@ async function setupAudio() {
 let _setInfo = ({ pos, length }: { pos: number, length: number }) => { }
 let _setUnderrun = (u: boolean) => { }
 
+function stop() {
+    audioWorklet && audioWorklet.disconnect()
+    webWorker && webWorker.terminate()
+}
+
 async function play(track: Track) {
     if (!setupDone) {
         await setupAudio()
     }
-    audioWorklet && audioWorklet.disconnect()
-    webWorker && webWorker.terminate()
+    stop()
     audioWorklet = new AudioWorkletNode(audioContext, "doublebuffer", {
         numberOfInputs: 0,
         numberOfOutputs: 1,
@@ -410,7 +414,7 @@ function formatTime(seconds: number) {
     return `${hours}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`
 }
 
-const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPlaying: (b: boolean) => void, reset: () => void }) => {
+const Controls = ({ state, setPlaying, reset, skip }: { state: PlayState | null, setPlaying: (b: boolean) => void, reset: () => void, skip: () => void }) => {
     const track = state?.track
     const disabled = state === null || state.status === "setup"
     const seekBar = useRef<HTMLDivElement>(null)
@@ -481,7 +485,7 @@ const Controls = ({ state, setPlaying, reset }: { state: PlayState | null, setPl
                             ? <BiPauseCircle onClick={() => setPlaying(false)} />
                             : <BiPlayCircle onClick={() => setPlaying(true)} />}
                 </button>
-                <button disabled={disabled} className="disabled:text-gray-500 hidden md:block"><BiSkipNext /></button>
+                <button disabled={disabled} className="disabled:text-gray-500 hidden md:block" onClick={skip}><BiSkipNext /></button>
             </div>
             <div className="flex flex-grow justify-between items-center text-gray-400 text-sm select-none">
                 {duration && <div className="text-right w-12">{formatTime(Math.floor(displayPos / audioContext.sampleRate))}</div>}
@@ -567,7 +571,7 @@ interface Album {
     tracks: string[]
 }
 
-const USE_BACKEND = false
+const USE_BACKEND = process.env.NODE_ENV === "production"
 
 const HomeView = ({ query, setAlbum }: { query?: string, setAlbum: (a: Album) => void }) => {
     const findAlbums = async () => {
@@ -793,6 +797,19 @@ const App = () => {
             _setState({ track: state!.track, status: "play" })
             await end
             _setState(null)
+        }} skip={() => {
+            if (!tracks || !state) return
+            const index = tracks.indexOf(state.track)
+            if (index + 1 < tracks.length) {
+                const track = tracks[(tracks.indexOf(state.track) + 1) % tracks.length]
+                setState({
+                    track,
+                    status: "pause",
+                })
+            } else {
+                stop()
+                _setState(null)
+            }
         }} />
         <About isOpen={showAbout} dismiss={() => setShowAbout(false)} />
     </div>
