@@ -1,0 +1,8 @@
+[package]
+name = "gcd"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+wasmtime = "0.37.0"
+anyhow = "1.0"
