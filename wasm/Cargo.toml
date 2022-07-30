@@ -6,3 +6,4 @@ edition = "2021"
 [dependencies]
 wasmtime = "0.37.0"
 anyhow = "1.0"
+cpal = "0.13.5"
