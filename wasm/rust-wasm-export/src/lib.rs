@@ -12,18 +12,9 @@ pub unsafe fn setup() -> *const f32 {
 }
 
 #[no_mangle]
-#[inline(never)]
-pub unsafe fn process() -> f32 {
-    let out = phase.sin();
-    phase += std::f64::consts::TAU * 200.0 / sample_rate;
-    out as f32
-}
-
-#[no_mangle]
-pub unsafe fn process_block() {
+pub unsafe fn process() {
     for i in 0..N {
-        // buf[i] = phase.sin() as f32;
-        // phase += std::f64::consts::TAU * 200.0 / sample_rate;
-        buf[i] = process();
+        buf[i] = phase.sin() as f32;
+        phase += std::f64::consts::TAU * 200.0 / sample_rate;
     }
 }
