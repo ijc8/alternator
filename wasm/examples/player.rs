@@ -20,7 +20,7 @@ fn get_audio_setup() -> (cpal::Device, cpal::SupportedStreamConfig) {
     panic!("no output devices have valid configs")
 }
 
-const N : usize = 32;
+const N : usize = 1024;
 static mut buf: [f32; N] = [0.0; N];
 
 fn benchmark(mut fun: impl FnMut()) -> std::time::Duration {
@@ -55,7 +55,48 @@ pub fn main() -> Result<()> {
     });
     println!("individual (sec/samp): {:?}", individual.as_secs_f64() / (N as f64));
 
-    let block = benchmark(|| process_block.call(&mut store, ()).unwrap());
+    let internal_buf = instance.get_global(&mut store, "buf").unwrap();
+    let idx = internal_buf.get(&mut store).unwrap_i32() as usize;
+    let block = benchmark(|| {
+        process_block.call(&mut store, ()).unwrap();
+        // Now, how to extract the results from Wasm linear memory to the host's float buffer?
+        // Attempt 1. Definitely safe but a little slow.
+        // let data = memory.data(&store);
+        // for i in 0..N {
+        //     let sample = f32::from_le_bytes(data[(idx + i*4)..idx + (i + 1)*4].try_into().unwrap());
+        //     unsafe { buf[i] = sample }
+        // }
+        // More idiomatic alternative?
+        // unsafe {
+        //     for (chunk, out) in data[idx..idx + N*4].chunks_exact(4).zip(buf.iter_mut()) {
+        //         *out = f32::from_le_bytes(chunk.try_into().unwrap());
+        //     }
+        // }
+        // Attempt 2. Fast but doubly unsafe: ignores endianness, and also may have undefined behavior if wasmtime memory is not f32-aligned.
+        // let data = &memory.data(&mut store)[idx..idx + N*4];
+        // unsafe {
+        //     let data = std::slice::from_raw_parts(data.as_ptr() as *const f32, N);
+        //     buf = data.try_into().unwrap();
+        // };
+        // Attempt 3. Fast and only singly unsafe; alignment is no issue, but endianness is ignored.
+        let byte_view = unsafe {
+            std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, N*4)
+        };
+        memory.read(&store, idx, byte_view).unwrap();
+
+        // Hypothetically, we'd need to then do this if running on a big-endian machine:
+        // let u32_view = unsafe {
+        //     std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u32, N)
+        // };
+        // for i in 0..N {
+        //     u32_view[i] = u32_view[i].swap_bytes();
+        // }
+
+        // This method of swapping bytes is way (~5x) slower:
+        // for i in 0..N {
+        //     byte_view[i*4..(i+1)*4].reverse();
+        // }
+    });
     println!("block (sec/samp): {:?}", block.as_secs_f64() / (N as f64));
     println!("ratio: {:?}", individual.as_secs_f64() / block.as_secs_f64());
     let tp = (block.as_secs_f64() - individual.as_secs_f64() / N as f64) * 1e9 / ((N - 1) as f64);
@@ -64,6 +105,10 @@ pub fn main() -> Result<()> {
     println!("estimated overhead per wasmtime call (ns): {}", tw);
     println!("sanity check: {} == {}", individual.as_nanos(), N as f64 * (tw + tp));
     println!("sanity check: {} == {}", block.as_nanos(), tw + N as f64 * tp);
+
+    // for i in 0..N {
+    //     unsafe { println!("{}: {}", i, buf[i]) };
+    // }
 
     Ok(())
 

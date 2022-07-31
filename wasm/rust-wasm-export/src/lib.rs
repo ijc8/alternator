@@ -1,4 +1,4 @@
-const N: usize = 32;
+const N: usize = 1024;
 
 static mut phase: f64 = 0.0;
 static sample_rate: f64 = 44100.0;
