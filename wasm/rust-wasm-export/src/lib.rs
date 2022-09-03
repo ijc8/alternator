@@ -2,7 +2,6 @@ const N: usize = 1024;
 
 static mut phase: f64 = 0.0;
 static sample_rate: f64 = 44100.0;
-// static buf: Vec<f32> = vec![0.0; 1024];
 #[no_mangle]
 static mut buf: [f32; N] = [0.0; N];
 

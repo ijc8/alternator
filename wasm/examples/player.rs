@@ -1,28 +1,28 @@
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use cpal::{traits::{DeviceTrait, HostTrait}, Sample};
 use wasmtime::*;
 
-fn get_audio_setup() -> (cpal::Device, cpal::SupportedStreamConfig) {
+fn get_audio_setup() -> Result<(cpal::Device, cpal::SupportedStreamConfig)> {
     let host = cpal::default_host();
     let device = host
         .default_output_device()
         .expect("no output device available");
     if let Ok(config) = device.default_output_config() {
-        return (device, config);
+        return Ok((device, config));
     }
     for device in host.output_devices().unwrap() {
         if let Ok(config) = device.default_output_config() {
-            return (device, config);
+            return Ok((device, config));
         }
     }
-    panic!("no output devices have valid configs")
+    Err(anyhow!("No output devices have valid configurations"))
 }
 
 const N : usize = 1024;
 static mut buf: [f32; N] = [0.0; N];
 
 pub fn main() -> Result<()> {
-    let (device, config) = get_audio_setup();
+    let (device, config) = get_audio_setup()?;
     println!(
         "device: {:?}, config: {:?}",
         device.name(),
@@ -50,7 +50,7 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     let buf_address = internal_buf.get(&mut store).unwrap_i32() as usize;
 
     let byte_view = unsafe { std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, N*4) };
-    let u32_view = unsafe { std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u32, N) };
+    let u32_view = unsafe { std::slice::from_raw_parts(buf.as_ptr() as *const u32, N) };
 
     // Start playing audio.
     let sample_rate = config.sample_rate.0 as f64;
