@@ -18,9 +18,6 @@ fn get_audio_setup() -> Result<(cpal::Device, cpal::SupportedStreamConfig)> {
     Err(anyhow!("No output devices have valid configurations"))
 }
 
-const N : usize = 1024;
-static mut buf: [f32; N] = [0.0; N];
-
 pub fn main() -> Result<()> {
     let (device, config) = get_audio_setup()?;
     println!(
@@ -41,23 +38,25 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     let mut store = Store::<()>::default();
     let module = Module::from_file(store.engine(), "rust-wasm-export/target/wasm32-unknown-unknown/release/rust_wasm_export.wasm")?;
     let instance = Instance::new(&mut store, &module, &[])?;
-    // let setup = instance.get_typed_func::<_, i32, _>(&mut store, "setup")?;
-    // println!("setup: {}", setup.call(&mut store, ()).unwrap());
+    let setup = instance.get_typed_func::<f32, i32, _>(&mut store, "setup")?;
     let process = instance.get_typed_func::<_, (), _>(&mut store, "process")?;
     let memory = instance.get_memory(&mut store, "memory").unwrap();
 
-    let internal_buf = instance.get_global(&mut store, "buf").unwrap();
-    let buf_address = internal_buf.get(&mut store).unwrap_i32() as usize;
+    let sample_rate = config.sample_rate.0 as f32;
+    // TODO: In the future, we might also pass in the block size and number of channels.
+    let buf_address = setup.call(&mut store, sample_rate).unwrap() as usize;
+
+    const N: usize = 1024;
+    let mut buf = [0.0f32; N];
 
     let byte_view = unsafe { std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, N*4) };
     let u32_view = unsafe { std::slice::from_raw_parts(buf.as_ptr() as *const u32, N) };
 
     // Start playing audio.
-    let sample_rate = config.sample_rate.0 as f64;
     let channels = config.channels as usize;
     let mut i = N;
     let err_fn = |err| eprintln!("an error occurred on the output audio stream: {}", err);
-    let stream = device.build_output_stream(config, move |output: &mut [T], _: &cpal::OutputCallbackInfo| {
+    let _stream = device.build_output_stream(config, move |output: &mut [T], _: &cpal::OutputCallbackInfo| {
         for frame in output.chunks_mut(channels) {
             if i == N {
                 // Generate more samples.
