@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use cpal::{traits::{DeviceTrait, HostTrait}, Sample};
 use wasmtime::*;
+use wasmtime_wasi::{WasiCtx, sync::WasiCtxBuilder};
 
 fn get_audio_setup() -> Result<(cpal::Device, cpal::SupportedStreamConfig)> {
     let host = cpal::default_host();
@@ -34,8 +35,18 @@ pub fn main() -> Result<()> {
 }
 
 fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> Result<(), anyhow::Error> {
+    // Setup Wasmtime.
+    let engine = Engine::default();
+    let mut linker = Linker::<WasiCtx>::new(&engine);
+    wasmtime_wasi::add_to_linker(&mut linker, |s| s)?;
+
+    let wasi = WasiCtxBuilder::new()
+        .inherit_stdio()
+        .inherit_args()?
+        .build();
+    let mut store = Store::new(&engine, wasi);
+
     // Load Wasm.
-    let mut store = Store::<()>::default();
     let module = Module::from_file(store.engine(), "rust-wasm-export/target/wasm32-unknown-unknown/release/rust_wasm_export.wasm")?;
     let instance = Instance::new(&mut store, &module, &[])?;
     let setup = instance.get_typed_func::<f32, i32, _>(&mut store, "setup")?;
@@ -44,7 +55,7 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
 
     let sample_rate = config.sample_rate.0 as f32;
     // TODO: In the future, we might also pass in the block size and number of channels.
-    let buf_address = setup.call(&mut store, sample_rate).unwrap() as usize;
+    let buf_address = setup.call(&mut store, sample_rate)? as usize;
 
     const N: usize = 1024;
     let mut buf = [0.0f32; N];
