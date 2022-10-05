@@ -1,3 +1,5 @@
+use std::fs::read;
+
 use anyhow::{anyhow, Result};
 use cpal::{traits::{DeviceTrait, HostTrait}, Sample};
 use wasmtime::*;
@@ -34,15 +36,51 @@ pub fn main() -> Result<()> {
     }
 }
 
-struct WasmStr<T: Fn()> {
-    addr: i32,
-    free: T,
-}
-
-impl<T: Fn()> Drop for WasmStr<T> {
-    fn drop(&mut self) {
-        (self.free)();
+fn get_binary_header_data(wasm_bytes: &[u8]) -> (u32, u32, u32) {
+    let magic: [u8; 4] = wasm_bytes[0..4].try_into().unwrap();
+    if u32::from_le_bytes(magic) != 0x6d736100 {
+        panic!("Wasm magic number is missing!");
     }
+    if wasm_bytes[8] != 0 {
+        panic!("Dylink section wasn't found in wasm binary, assuming static wasm.");
+        // return "static";
+    }
+
+    let mut next = 9;
+    let mut get_leb = || {
+        let mut return_value: u32 = 0;
+        let mut mul: u32 = 1;
+        loop {
+            let byte = wasm_bytes[next];
+            next += 1;
+            return_value += (byte & 0x7f) as u32 * mul;
+            mul *= 0x80;
+            if byte & 0x80 == 0 { break };
+        }
+        return_value
+    };
+    let _section_size = get_leb();
+    // 6, size of "dylink" string = 7
+    next += 7;
+    // This is dumb.
+    let mut get_leb = || {
+        let mut return_value: u32 = 0;
+        let mut mul: u32 = 1;
+        loop {
+            let byte = wasm_bytes[next];
+            next += 1;
+            return_value += (byte & 0x7f) as u32 * mul;
+            mul *= 0x80;
+            if byte & 0x80 == 0 { break };
+        }
+        return_value
+    };
+    let memory_size = get_leb();
+    let memory_align = get_leb();
+    let table_size = get_leb();
+    // let tableAlign = getLEB();
+    // let neededDynlibsCount = getLEB();
+    (memory_size, memory_align, table_size)
 }
 
 fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> Result<(), anyhow::Error> {
@@ -59,19 +97,30 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     let mut store = Store::new(&engine, wasi);
 
     // Load Wasm.
+    let wasm_bytes = read("csound.dylib.wasm").unwrap();
+    let (memory_size, memory_align, table_size) = get_binary_header_data(wasm_bytes.as_slice());
+    println!("Got {}, {}, {}", memory_size, memory_align, table_size);
     let module = Module::from_file(store.engine(), "csound.dylib.wasm")?;
 
     println!("B");
 
-    let a = 128 * 16;
-    let b = (a + 128) * 65536;
+    const PAGE_SIZE: i32 = 65536;
+    const PAGES_PER_MB: i32 = 16; // 1048576 bytes per MB / PAGE_SIZE
+
+    let fixed_memory_base = 128 * PAGES_PER_MB;
+    let initial_memory = ((memory_size + memory_align) as f32 / (PAGE_SIZE as f32)).ceil() as i32;
+    let plugins_memory = 0;
+  
+    let total_initial_memory = initial_memory + plugins_memory + fixed_memory_base;
 
     let memory = Memory::new(&mut store, MemoryType::new(16, None))?;
-    let table = Table::new(&mut store, TableType::new(ValType::FuncRef, 3343, None), Val::FuncRef(None))?;
-    let stack_pointer = Global::new(&mut store, GlobalType::new(ValType::I32, Mutability::Var), Val::I32(b))?;
-    let memory_base = Global::new(&mut store, GlobalType::new(ValType::I32, Mutability::Const), Val::I32(a))?;
-    let table_base = Global::new(&mut store, GlobalType::new(ValType::I32, Mutability::Const), Val::I32(0))?;
-    let heap_base = Global::new(&mut store, GlobalType::new(ValType::I32, Mutability::Var), Val::I32(b))?;
+    memory.grow(&mut store, total_initial_memory as u64).unwrap();
+    println!("ma {}", memory.data_size(&store));
+    let table = Table::new(&mut store, TableType::new(ValType::FuncRef, 3344, None), Val::FuncRef(None))?;
+    let stack_pointer = Global::new(&mut store, GlobalType::new(ValType::I32, Mutability::Var), Val::I32(total_initial_memory * PAGE_SIZE))?;
+    let memory_base = Global::new(&mut store, GlobalType::new(ValType::I32, Mutability::Const), Val::I32(fixed_memory_base))?;
+    let table_base = Global::new(&mut store, GlobalType::new(ValType::I32, Mutability::Const), Val::I32(1))?;
+    let heap_base = Global::new(&mut store, GlobalType::new(ValType::I32, Mutability::Var), Val::I32(total_initial_memory * PAGE_SIZE))?;
 
     linker.define("env", "memory", memory)?;
     linker.define("env", "__indirect_function_table", table)?;
@@ -85,29 +134,34 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
 
     let instance = linker.instantiate(&mut store, &module)?;
 
-    let allocStringMem = instance.get_typed_func::<i32, i32, _>(&mut store, "allocStringMem")?;
-    let freeStringMem = instance.get_typed_func::<i32, (), _>(&mut store, "freeStringMem")?;
+    let alloc_string_mem = instance.get_typed_func::<i32, i32, _>(&mut store, "allocStringMem")?;
+    let free_string_mem = instance.get_typed_func::<i32, (), _>(&mut store, "freeStringMem")?;
 
-    let csoundInitialize = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundInitialize")?;
-    csoundInitialize.call(&mut store, 0);
-
-    println!("C");
+    let csound_initialize = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundInitialize")?;
+    println!("initialize: {}", csound_initialize.call(&mut store, 0).unwrap());
+    let csound_create = instance.get_typed_func::<(), i32, _>(&mut store, "csoundCreateWasi")?;
+    let cs = csound_create.call(&mut store, ()).unwrap();
+    dbg!(cs);
+    let csound_set_option = instance.get_typed_func::<(i32, i32), i32, _>(&mut store, "csoundSetOption")?;
 
     let thing = instance.get_typed_func::<_, i32, _>(&mut store, "csoundGetAPIVersion")?;
     let version = thing.call(&mut store, ()).unwrap();
     println!("{}", version);
 
-    let mut string2ptr = |s: &str| {
+    let mut with_wasm_str = |s: &str, f: Box<dyn FnOnce(&mut Store<WasiCtx>, i32)>| {
         let buffer = s.as_bytes();
-        let addr = allocStringMem.call(&mut store, buffer.len() as i32).unwrap();
-        memory.write(&mut store, addr as usize, buffer);
-        let sref = &mut store;
-        WasmStr { addr, free: move || { freeStringMem.call(sref, addr).unwrap(); } }
+        let addr = alloc_string_mem.call(&mut store, buffer.len() as i32).unwrap();
+        memory.write(&mut store, addr as usize, buffer).unwrap();
+        f(&mut store, addr);
+        free_string_mem.call(&mut store, addr).unwrap();
     };
+
     for s in ["-odac", "-iadc", "-M0", "-+rtaudio=null", "-+rtmidi=null", "--sample-rate=44100", "--nchnls_i=0"] {
-        let cstr = string2ptr(s);
-        println!("{} {}", s, cstr.addr);
-        // csoundSetOption(cs, cstr.addr);
+        println!("{}", s);
+        with_wasm_str(s, Box::new(|store, addr| {
+            println!("{}", addr);
+            csound_set_option.call(store, (cs, addr)).unwrap();
+        }))
     }
 
 
