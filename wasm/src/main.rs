@@ -34,6 +34,17 @@ pub fn main() -> Result<()> {
     }
 }
 
+struct WasmStr<T: Fn()> {
+    addr: i32,
+    free: T,
+}
+
+impl<T: Fn()> Drop for WasmStr<T> {
+    fn drop(&mut self) {
+        (self.free)();
+    }
+}
+
 fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> Result<(), anyhow::Error> {
     // Setup Wasmtime.
     let engine = Engine::default();
@@ -74,11 +85,32 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
 
     let instance = linker.instantiate(&mut store, &module)?;
 
+    let allocStringMem = instance.get_typed_func::<i32, i32, _>(&mut store, "allocStringMem")?;
+    let freeStringMem = instance.get_typed_func::<i32, (), _>(&mut store, "freeStringMem")?;
+
+    let csoundInitialize = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundInitialize")?;
+    csoundInitialize.call(&mut store, 0);
+
     println!("C");
 
     let thing = instance.get_typed_func::<_, i32, _>(&mut store, "csoundGetAPIVersion")?;
     let version = thing.call(&mut store, ()).unwrap();
     println!("{}", version);
+
+    let mut string2ptr = |s: &str| {
+        let buffer = s.as_bytes();
+        let addr = allocStringMem.call(&mut store, buffer.len() as i32).unwrap();
+        memory.write(&mut store, addr as usize, buffer);
+        let sref = &mut store;
+        WasmStr { addr, free: move || { freeStringMem.call(sref, addr).unwrap(); } }
+    };
+    for s in ["-odac", "-iadc", "-M0", "-+rtaudio=null", "-+rtmidi=null", "--sample-rate=44100", "--nchnls_i=0"] {
+        let cstr = string2ptr(s);
+        println!("{} {}", s, cstr.addr);
+        // csoundSetOption(cs, cstr.addr);
+    }
+
+
     // let setup = instance.get_typed_func::<f32, i32, _>(&mut store, "setup")?;
     // let process = instance.get_typed_func::<_, (), _>(&mut store, "process")?;
     // let memory = instance.get_memory(&mut store, "memory").unwrap();
