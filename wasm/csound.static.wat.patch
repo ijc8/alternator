@@ -1,0 +1,4 @@
+148d147
+<   (import "env" "memory" (memory (;0;) 17))
+170a170
+>   (memory (export "memory") 17)
