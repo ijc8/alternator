@@ -1,9 +1,9 @@
-use std::{fs::read_to_string, sync::{atomic::{AtomicBool, Ordering}, Arc}};
+use std::{sync::{atomic::{AtomicBool, Ordering}, Arc}};
 
 use anyhow::{anyhow, Result};
 use cpal::{traits::{DeviceTrait, HostTrait}, Sample};
 use wasmtime::*;
-use wasmtime_wasi::{WasiCtx, sync::WasiCtxBuilder};
+use wasmtime_wasi::{WasiCtx, sync::WasiCtxBuilder, Dir};
 
 fn get_audio_setup() -> Result<(cpal::Device, cpal::SupportedStreamConfig)> {
     let host = cpal::default_host();
@@ -46,6 +46,7 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     let wasi = WasiCtxBuilder::new()
         .inherit_stdio()
         .inherit_args()?
+        .preopened_dir(Dir::from_std_file(std::fs::File::open("assets")?), "/")?
         .build();
     let mut store = Store::new(&engine, wasi);
 
@@ -64,6 +65,10 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     let alloc_string_mem = instance.get_typed_func::<i32, i32, _>(&mut store, "allocStringMem")?;
     let free_string_mem = instance.get_typed_func::<i32, (), _>(&mut store, "freeStringMem")?;
 
+    // Magic? Reading from files fails without this call.
+    let start = instance.get_typed_func::<(), (), _>(&mut store, "_start")?;
+    start.call(&mut store, ())?;
+
     let csound_initialize = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundInitialize")?;
     println!("initialize: {}", csound_initialize.call(&mut store, 0).unwrap());
     let csound_create = instance.get_typed_func::<(), i32, _>(&mut store, "csoundCreateWasi")?;
@@ -71,6 +76,7 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     dbg!(cs);
     let csound_set_option = instance.get_typed_func::<(i32, i32), i32, _>(&mut store, "csoundSetOption")?;
     let csound_compile_csd_text = instance.get_typed_func::<(i32, i32), i32, _>(&mut store, "csoundCompileCsdText")?;
+    let csound_compile_csd = instance.get_typed_func::<(i32, i32), i32, _>(&mut store, "csoundCompileCsd")?;
     let csound_get_0dbfs = instance.get_typed_func::<i32, f64, _>(&mut store, "csoundGet0dBFS")?;
     let csound_get_ksmps = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundGetKsmps")?;
     let csound_get_spout = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundGetSpout")?;
@@ -99,10 +105,8 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
         }))
     }
 
-    let csd = read_to_string("example.csd")?;
-
-    with_wasm_str(csd.as_str(), Box::new(|store, addr| {
-        csound_compile_csd_text.call(store, (cs, addr)).unwrap();
+    with_wasm_str("main.csd", Box::new(|store, addr| {
+        dbg!(csound_compile_csd.call(store, (cs, addr)).unwrap());
     }));
 
     println!("start: {}", csound_start.call(&mut store, cs)?);
