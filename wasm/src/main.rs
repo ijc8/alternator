@@ -1,4 +1,4 @@
-use std::fs::read_to_string;
+use std::{fs::read_to_string, sync::{atomic::{AtomicBool, Ordering}, Arc}};
 
 use anyhow::{anyhow, Result};
 use cpal::{traits::{DeviceTrait, HostTrait}, Sample};
@@ -131,12 +131,17 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     let channels = config.channels as usize;
     let mut i = N;
     let err_fn = |err| eprintln!("an error occurred on the output audio stream: {}", err);
+    let finished = Arc::new(AtomicBool::new(false));
+    let finished2 = finished.clone();
+    let main_thread = std::thread::current();
     let _stream = device.build_output_stream(config, move |output: &mut [T], _: &cpal::OutputCallbackInfo| {
         for frame in output.chunks_mut(channels) {
             if i == N {
                 // Generate more samples.
                 // process.call(&mut store, ()).unwrap();
                 if csound_perform_ksmps.call(&mut store, cs).unwrap() != 0 {
+                    finished.store(true, Ordering::Relaxed);
+                    main_thread.unpark();
                     break;
                 }
                 // memory.read(&store, buf_address, byte_view).unwrap();
@@ -151,7 +156,9 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
         }
     }, err_fn)?;
 
-    std::thread::sleep(std::time::Duration::from_secs(8));
+    while !finished2.load(Ordering::Relaxed) {
+        std::thread::park();
+    }
 
     Ok(())
 }
