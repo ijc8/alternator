@@ -29,6 +29,9 @@ void *setup(float sample_rate) {
     cs = csoundCreateWasi();
     // ["-+rtaudio=null", "--sample-rate=44100", "--nchnls_i=0", "-b 1024"]
     csoundSetOption(cs, "-odac");
+    // This breaks things when manually patching this into the binary;
+    // I suspect the extra string literal is conflicting with data from csound.static.wasm.
+    csoundSetOption(cs, "--sample-rate=44100");
     csoundCompileCsd(cs, "main.csd");
     csoundStart(cs);
     scale = 1.0 / csoundGet0dBFS(cs);
