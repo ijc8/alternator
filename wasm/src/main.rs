@@ -51,7 +51,7 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     let mut store = Store::new(&engine, wasi);
 
     // Load Wasm.
-    let module = Module::from_file(store.engine(), "csound.static.mod.wasm")?;
+    let module = Module::from_file(store.engine(), "csound.static.mod2.wasm")?;
 
     println!("B");
 
@@ -71,19 +71,12 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
 
     let csound_initialize = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundInitialize")?;
     println!("initialize: {}", csound_initialize.call(&mut store, 0).unwrap());
-    let csound_create = instance.get_typed_func::<(), i32, _>(&mut store, "csoundCreateWasi")?;
-    let cs = csound_create.call(&mut store, ()).unwrap();
-    dbg!(cs);
-    let csound_set_option = instance.get_typed_func::<(i32, i32), i32, _>(&mut store, "csoundSetOption")?;
-    let csound_compile_csd_text = instance.get_typed_func::<(i32, i32), i32, _>(&mut store, "csoundCompileCsdText")?;
-    let csound_compile_csd = instance.get_typed_func::<(i32, i32), i32, _>(&mut store, "csoundCompileCsd")?;
+    let setup = instance.get_typed_func::<(), i32, _>(&mut store, "setup")?;
+    let spout = setup.call(&mut store, ()).unwrap() as usize;
+    dbg!(spout);
     let csound_get_0dbfs = instance.get_typed_func::<i32, f64, _>(&mut store, "csoundGet0dBFS")?;
     let csound_get_ksmps = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundGetKsmps")?;
-    let csound_get_spout = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundGetSpout")?;
     let csound_get_nchnls = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundGetNchnls")?;
-    // let csound_get_output_buffer_size = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundGetOutputBufferSize")?;
-    let csound_start = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundStart")?;
-    let csound_perform_ksmps = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundPerformKsmpsWasi")?;
 
     let thing = instance.get_typed_func::<_, i32, _>(&mut store, "csoundGetAPIVersion")?;
     let version = thing.call(&mut store, ()).unwrap();
@@ -97,28 +90,13 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
         free_string_mem.call(&mut store, addr).unwrap();
     };
 
-    for s in ["-odac", "-iadc", "-M0", "-+rtaudio=null", "--sample-rate=44100", "--nchnls_i=0", "-b 1024"] {
-        println!("{}", s);
-        with_wasm_str(s, Box::new(|store, addr| {
-            println!("{}", addr);
-            csound_set_option.call(store, (cs, addr)).unwrap();
-        }))
-    }
-
-    with_wasm_str("main.csd", Box::new(|store, addr| {
-        dbg!(csound_compile_csd.call(store, (cs, addr)).unwrap());
-    }));
-
-    println!("start: {}", csound_start.call(&mut store, cs)?);
-
-    let spout = csound_get_spout.call(&mut store, cs)? as usize;
-    let nchan = csound_get_nchnls.call(&mut store, cs)?;
-    let ksmps = csound_get_ksmps.call(&mut store, cs)?;
+    let nchan = 2; // csound_get_nchnls.call(&mut store, cs)?;
+    let ksmps = 32; // csound_get_ksmps.call(&mut store, cs)?;
     let spout_len = nchan * ksmps;
-    let scale = 1.0 / csound_get_0dbfs.call(&mut store, cs)?;
+    let scale = 1.0; // 1.0 / csound_get_0dbfs.call(&mut store, cs)?;
 
     // let setup = instance.get_typed_func::<f32, i32, _>(&mut store, "setup")?;
-    // let process = instance.get_typed_func::<_, (), _>(&mut store, "process")?;
+    let process = instance.get_typed_func::<(), i32, _>(&mut store, "process")?;
     // let memory = instance.get_memory(&mut store, "memory").unwrap();
 
     let sample_rate = config.sample_rate.0 as f32;
@@ -143,7 +121,7 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
             if i == N {
                 // Generate more samples.
                 // process.call(&mut store, ()).unwrap();
-                if csound_perform_ksmps.call(&mut store, cs).unwrap() != 0 {
+                if process.call(&mut store, ()).unwrap() != 0 {
                     finished.store(true, Ordering::Relaxed);
                     main_thread.unpark();
                     break;

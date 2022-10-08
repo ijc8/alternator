@@ -1,0 +1,121 @@
+148d147
+<   (import "env" "memory" (memory (;0;) 17))
+170a170
+>   (memory (export "memory") 17)
+504180,504181c504180,504181
+<     call $process
+<     call $process
+---
+>     call $csound_internal_process
+>     call $csound_internal_process
+504187,504188c504187,504188
+<     call $process
+<     call $process
+---
+>     call $csound_internal_process
+>     call $csound_internal_process
+504190c504190
+<   (func $process (type 9) (param i32 f64) (result f64)
+---
+>   (func $csound_internal_process (type 9) (param i32 f64) (result f64)
+504237c504237
+<     call $process
+---
+>     call $csound_internal_process
+504246c504246
+<     call $process
+---
+>     call $csound_internal_process
+504252c504252
+<     call $process
+---
+>     call $csound_internal_process
+504258c504258
+<     call $process
+---
+>     call $csound_internal_process
+504694,504695c504694,504695
+<         call $process
+<         call $process
+---
+>         call $csound_internal_process
+>         call $csound_internal_process
+504841,504844c504841,504844
+<         call $process
+<         call $process
+<         call $process
+<         call $process
+---
+>         call $csound_internal_process
+>         call $csound_internal_process
+>         call $csound_internal_process
+>         call $csound_internal_process
+1083626a1083627,1083694
+> ;; Additions:
+>   (func $setup (result i32)
+>     (local i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32 i32)
+>     call $csoundCreateWasi
+>     local.set 0
+>     i32.const 0
+>     local.set 1
+>     local.get 1
+>     local.get 0
+>     i32.store
+>     i32.const 0
+>     local.set 2
+>     local.get 2
+>     i32.load
+>     local.set 3
+>     i32.const 4
+>     local.set 4
+>     local.get 3
+>     local.get 4
+>     call $csoundSetOption
+>     drop
+>     i32.const 0
+>     local.set 5
+>     local.get 5
+>     i32.load
+>     local.set 6
+>     i32.const 10
+>     local.set 7
+>     local.get 6
+>     local.get 7
+>     call $csoundCompileCsd
+>     drop
+>     i32.const 0
+>     local.set 8
+>     local.get 8
+>     i32.load
+>     local.set 9
+>     local.get 9
+>     call $csoundStart
+>     drop
+>     i32.const 0
+>     local.set 10
+>     local.get 10
+>     i32.load
+>     local.set 11
+>     local.get 11
+>     call $csoundGetSpout
+>     local.set 12
+>     local.get 12
+>     return)
+>   (func $process (result i32)
+>     (local i32 i32 i32)
+>     i32.const 0
+>     local.set 0
+>     local.get 0
+>     i32.load
+>     local.set 1
+>     local.get 1
+>     call $csoundPerformKsmpsWasi
+>     local.set 2
+>     local.get 2
+>     return)
+>   (data $cs (i32.const 0) "\00\00\00\00")
+>   (data $.L.str (i32.const 4) "-odac\00")
+>   (data $.L.str.1 (i32.const 10) "main.csd\00")
+>   (export "setup" (func $setup))
+>   (export "process" (func $process))
+> ;; End additions.
