@@ -42,7 +42,7 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     let mut linker = Linker::<WasiCtx>::new(&engine);
     wasmtime_wasi::add_to_linker(&mut linker, |s| s)?;
 
-    println!("A");
+    println!("Setting up engine.");
     let wasi = WasiCtxBuilder::new()
         .inherit_stdio()
         .inherit_args()?
@@ -51,13 +51,10 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     let mut store = Store::new(&engine, wasi);
 
     // Load Wasm.
-    let module = Module::from_file(store.engine(), "csound.static.mod2.wasm")?;
-
-    println!("B");
-
-    linker.func_wrap("env", "csoundLoadModules", |_: i32| { 0 })?;
-    linker.func_wrap("env", "csoundWasiJsMessageCallback", |_: i32, _: i32, _: i32, _: i32| {})?;
-
+    println!("Loading module.");
+    let module = Module::from_file(store.engine(), "csound.custom.wasm")?;
+    
+    println!("Creating instance.");
     let instance = linker.instantiate(&mut store, &module)?;
 
     let memory = instance.get_memory(&mut store, "memory").unwrap();
