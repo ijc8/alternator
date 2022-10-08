@@ -2,6 +2,7 @@
 
 typedef void CSOUND;
 
+void _start();
 CSOUND *csoundCreateWasi();
 int csoundSetOption(CSOUND *csound, char *s);
 double *csoundGetSpout(CSOUND *csound);
@@ -23,7 +24,8 @@ static float output[N];
 
 static int spout_index;
 
-void *setup() {
+void *setup(float sample_rate) {
+    _start();
     cs = csoundCreateWasi();
     // ["-+rtaudio=null", "--sample-rate=44100", "--nchnls_i=0", "-b 1024"]
     csoundSetOption(cs, "-odac");

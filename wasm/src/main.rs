@@ -62,24 +62,11 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
 
     let memory = instance.get_memory(&mut store, "memory").unwrap();
 
-    // Magic? Reading from files fails without this call.
-    let start = instance.get_typed_func::<(), (), _>(&mut store, "_start")?;
-    start.call(&mut store, ())?;
-
-    let csound_initialize = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundInitialize")?;
-    println!("initialize: {}", csound_initialize.call(&mut store, 0).unwrap());
-    let setup = instance.get_typed_func::<(), i32, _>(&mut store, "setup")?;
-    let buf_address = setup.call(&mut store, ()).unwrap() as usize;
-    dbg!(buf_address);
-    let csound_get_ksmps = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundGetKsmps")?;
-
-    // let setup = instance.get_typed_func::<f32, i32, _>(&mut store, "setup")?;
+    let setup = instance.get_typed_func::<f32, i32, _>(&mut store, "setup")?;
     let process = instance.get_typed_func::<(), i32, _>(&mut store, "process")?;
-    // let memory = instance.get_memory(&mut store, "memory").unwrap();
 
     let sample_rate = config.sample_rate.0 as f32;
-    // TODO: In the future, we might also pass in the block size and number of channels.
-    // let buf_address = setup.call(&mut store, sample_rate)? as usize;
+    let buf_address = setup.call(&mut store, sample_rate).unwrap() as usize;
 
     const N: usize = 1024;
     let mut buf = [0.0f32; N];
