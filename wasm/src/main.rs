@@ -62,9 +62,6 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
 
     let memory = instance.get_memory(&mut store, "memory").unwrap();
 
-    let alloc_string_mem = instance.get_typed_func::<i32, i32, _>(&mut store, "allocStringMem")?;
-    let free_string_mem = instance.get_typed_func::<i32, (), _>(&mut store, "freeStringMem")?;
-
     // Magic? Reading from files fails without this call.
     let start = instance.get_typed_func::<(), (), _>(&mut store, "_start")?;
     start.call(&mut store, ())?;
@@ -72,28 +69,9 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     let csound_initialize = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundInitialize")?;
     println!("initialize: {}", csound_initialize.call(&mut store, 0).unwrap());
     let setup = instance.get_typed_func::<(), i32, _>(&mut store, "setup")?;
-    let spout = setup.call(&mut store, ()).unwrap() as usize;
-    dbg!(spout);
-    let csound_get_0dbfs = instance.get_typed_func::<i32, f64, _>(&mut store, "csoundGet0dBFS")?;
+    let buf_address = setup.call(&mut store, ()).unwrap() as usize;
+    dbg!(buf_address);
     let csound_get_ksmps = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundGetKsmps")?;
-    let csound_get_nchnls = instance.get_typed_func::<i32, i32, _>(&mut store, "csoundGetNchnls")?;
-
-    let thing = instance.get_typed_func::<_, i32, _>(&mut store, "csoundGetAPIVersion")?;
-    let version = thing.call(&mut store, ()).unwrap();
-    println!("{}", version);
-
-    let mut with_wasm_str = |s: &str, f: Box<dyn FnOnce(&mut Store<WasiCtx>, i32)>| {
-        let buffer = s.as_bytes();
-        let addr = alloc_string_mem.call(&mut store, buffer.len() as i32).unwrap();
-        memory.write(&mut store, addr as usize, buffer).unwrap();
-        f(&mut store, addr);
-        free_string_mem.call(&mut store, addr).unwrap();
-    };
-
-    let nchan = 2; // csound_get_nchnls.call(&mut store, cs)?;
-    let ksmps = 32; // csound_get_ksmps.call(&mut store, cs)?;
-    let spout_len = nchan * ksmps;
-    let scale = 1.0; // 1.0 / csound_get_0dbfs.call(&mut store, cs)?;
 
     // let setup = instance.get_typed_func::<f32, i32, _>(&mut store, "setup")?;
     let process = instance.get_typed_func::<(), i32, _>(&mut store, "process")?;
@@ -103,11 +81,11 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     // TODO: In the future, we might also pass in the block size and number of channels.
     // let buf_address = setup.call(&mut store, sample_rate)? as usize;
 
-    const N: usize = 64;
-    let mut buf = [0.0f64; N];
+    const N: usize = 32;
+    let mut buf = [0.0f32; N];
 
-    let byte_view = unsafe { std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, N*8) };
-    let u64_view = unsafe { std::slice::from_raw_parts(buf.as_ptr() as *const u64, N) };
+    let byte_view = unsafe { std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, N*4) };
+    let u32_view = unsafe { std::slice::from_raw_parts(buf.as_ptr() as *const u32, N) };
 
     // Start playing audio.
     let channels = config.channels as usize;
@@ -120,17 +98,15 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
         for frame in output.chunks_mut(channels) {
             if i == N {
                 // Generate more samples.
-                // process.call(&mut store, ()).unwrap();
-                if process.call(&mut store, ()).unwrap() != 0 {
+                if (process.call(&mut store, ()).unwrap() as usize) < N {
                     finished.store(true, Ordering::Relaxed);
                     main_thread.unpark();
                     break;
                 }
-                // memory.read(&store, buf_address, byte_view).unwrap();
-                memory.read(&store, spout, byte_view).unwrap();
+                memory.read(&store, buf_address, byte_view).unwrap();
                 i = 0;
             }
-            let sample = Sample::from(&(f64::from_bits(u64::from_le(u64_view[i])) as f32));
+            let sample = Sample::from(&f32::from_bits(u32::from_le(u32_view[i])));
             i += 2;
             for out in frame.iter_mut() {
                 *out = sample;

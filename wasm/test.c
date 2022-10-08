@@ -1,11 +1,21 @@
-void *csoundCreateWasi();
-int csoundSetOption(void *csound, char *s);
-void *csoundGetSpout(void *csound);
-int csoundCompileCsd(void *csound, char *filename);
-int csoundStart(void *csound);
-int csoundPerformKsmpsWasi(void *csound);
+typedef void CSOUND;
+
+CSOUND *csoundCreateWasi();
+int csoundSetOption(CSOUND *csound, char *s);
+double *csoundGetSpout(CSOUND *csound);
+double csoundGet0dBFS(CSOUND *csound);
+int csoundGetNchnls(CSOUND *csound);
+int csoundCompileCsd(CSOUND *csound, char *filename);
+int csoundStart(CSOUND *csound);
+int csoundPerformKsmpsWasi(CSOUND *csound);
+
+#define N 32
 
 static void *cs;
+static double scale;
+static int channels;
+static double *spout;
+static float output[N];
 
 void *setup() {
     cs = csoundCreateWasi();
@@ -13,9 +23,20 @@ void *setup() {
     csoundSetOption(cs, "-odac");
     csoundCompileCsd(cs, "main.csd");
     csoundStart(cs);
-    return csoundGetSpout(cs);
+    scale = 1.0 / csoundGet0dBFS(cs);
+    channels = csoundGetNchnls(cs);
+    spout = csoundGetSpout(cs);
+    return output;
 }
 
 int process() {
-    return csoundPerformKsmpsWasi(cs);
+    // static int n = 0;
+    // TODO: Should include this last sample and still scale.
+    if (csoundPerformKsmpsWasi(cs) != 0) {
+        return N - 1;
+    }
+    for (int i = 0; i < N; i++) {
+        output[i] = spout[i*channels] * scale;
+    }
+    return N;
 }
