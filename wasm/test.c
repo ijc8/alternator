@@ -1,42 +1,58 @@
+#include <stdbool.h>
+
 typedef void CSOUND;
 
 CSOUND *csoundCreateWasi();
 int csoundSetOption(CSOUND *csound, char *s);
 double *csoundGetSpout(CSOUND *csound);
 double csoundGet0dBFS(CSOUND *csound);
+int csoundGetKsmps(CSOUND *csound);
 int csoundGetNchnls(CSOUND *csound);
 int csoundCompileCsd(CSOUND *csound, char *filename);
 int csoundStart(CSOUND *csound);
 int csoundPerformKsmpsWasi(CSOUND *csound);
 
-#define N 32
+#define N 1024
 
 static void *cs;
 static double scale;
 static int channels;
+static int ksmps;
 static double *spout;
 static float output[N];
 
+static int spout_index;
+
 void *setup() {
     cs = csoundCreateWasi();
-    // ["-odac", "-iadc", "-M0", "-+rtaudio=null", "--sample-rate=44100", "--nchnls_i=0", "-b 1024"]
+    // ["-+rtaudio=null", "--sample-rate=44100", "--nchnls_i=0", "-b 1024"]
     csoundSetOption(cs, "-odac");
     csoundCompileCsd(cs, "main.csd");
     csoundStart(cs);
     scale = 1.0 / csoundGet0dBFS(cs);
+    ksmps = csoundGetKsmps(cs);
+    spout_index = ksmps;
     channels = csoundGetNchnls(cs);
     spout = csoundGetSpout(cs);
     return output;
 }
 
 int process() {
-    // static int n = 0;
-    // TODO: Should include this last sample and still scale.
-    if (csoundPerformKsmpsWasi(cs) != 0) {
-        return N - 1;
+    static bool done = false;
+    
+    int i;
+    for (i = 0; i < N; i++) {
+        if (spout_index == ksmps) {
+            if (done) {
+                break;
+            } else if (csoundPerformKsmpsWasi(cs) != 0) {
+                // Include the last Ksmps frames.
+                done = true;
+            }
+            spout_index = 0;
+        }
+        output[i] = spout[spout_index*channels] * scale;
+        spout_index++;
     }
-    for (int i = 0; i < N; i++) {
-        output[i] = spout[i*channels] * scale;
-    }
-    return N;
+    return i;
 }

@@ -81,7 +81,7 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     // TODO: In the future, we might also pass in the block size and number of channels.
     // let buf_address = setup.call(&mut store, sample_rate)? as usize;
 
-    const N: usize = 32;
+    const N: usize = 1024;
     let mut buf = [0.0f32; N];
 
     let byte_view = unsafe { std::slice::from_raw_parts_mut(buf.as_mut_ptr() as *mut u8, N*4) };
@@ -107,7 +107,7 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
                 i = 0;
             }
             let sample = Sample::from(&f32::from_bits(u32::from_le(u32_view[i])));
-            i += 2;
+            i += 1;
             for out in frame.iter_mut() {
                 *out = sample;
             }
