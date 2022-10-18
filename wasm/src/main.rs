@@ -46,13 +46,13 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     let wasi = WasiCtxBuilder::new()
         .inherit_stdio()
         .inherit_args()?
-        .preopened_dir(Dir::from_std_file(std::fs::File::open("assets")?), "/")?
+        .preopened_dir(Dir::from_std_file(std::fs::File::open("bundle")?), "/")?
         .build();
     let mut store = Store::new(&engine, wasi);
 
     // Load Wasm.
     println!("Loading module.");
-    let module = Module::from_file(store.engine(), "csound.custom.wasm")?;
+    let module = Module::from_file(store.engine(), "bundle/csound.custom.wasm")?;
     
     println!("Creating instance.");
     let instance = linker.instantiate(&mut store, &module)?;
