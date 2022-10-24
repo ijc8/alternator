@@ -1,4 +1,4 @@
-use std::{sync::{atomic::{AtomicBool, Ordering}, Arc}};
+use std::{sync::{atomic::{AtomicBool, Ordering}, Arc}, path::{Path, PathBuf}, process::exit};
 
 use anyhow::{anyhow, Result};
 use cpal::{traits::{DeviceTrait, HostTrait}, Sample};
@@ -22,6 +22,10 @@ fn get_audio_setup() -> Result<(cpal::Device, cpal::SupportedStreamConfig)> {
 }
 
 pub fn main() -> Result<()> {
+    let path = PathBuf::from(std::env::args().nth(1).unwrap_or_else(|| {
+        eprintln!("usage: player <bundle path>");
+        exit(1);
+    }));
     let (device, config) = get_audio_setup()?;
     println!(
         "device: {:?}, config: {:?}",
@@ -30,13 +34,13 @@ pub fn main() -> Result<()> {
     );
 
     match config.sample_format() {
-        cpal::SampleFormat::F32 => run::<f32>(&device, &config.into()),
-        cpal::SampleFormat::I16 => run::<i16>(&device, &config.into()),
-        cpal::SampleFormat::U16 => run::<u16>(&device, &config.into()),
+        cpal::SampleFormat::F32 => run::<f32>(&path, &device, &config.into()),
+        cpal::SampleFormat::I16 => run::<i16>(&path, &device, &config.into()),
+        cpal::SampleFormat::U16 => run::<u16>(&path, &device, &config.into()),
     }
 }
 
-fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> Result<(), anyhow::Error> {
+fn run<T: cpal::Sample>(path: &Path, device: &cpal::Device, config: &cpal::StreamConfig) -> Result<(), anyhow::Error> {
     // Setup Wasmtime.
     let engine = Engine::default();
     let mut linker = Linker::<WasiCtx>::new(&engine);
@@ -46,13 +50,13 @@ fn run<T: cpal::Sample>(device: &cpal::Device, config: &cpal::StreamConfig) -> R
     let wasi = WasiCtxBuilder::new()
         .inherit_stdio()
         .inherit_args()?
-        .preopened_dir(Dir::from_std_file(std::fs::File::open("bundle")?), "/")?
+        .preopened_dir(Dir::from_std_file(std::fs::File::open(path)?), "/")?
         .build();
     let mut store = Store::new(&engine, wasi);
 
     // Load Wasm.
     println!("Loading module.");
-    let module = Module::from_file(store.engine(), "bundle/csound.custom.wasm")?;
+    let module = Module::from_file(store.engine(), path.join("main.wasm"))?;
     
     println!("Creating instance.");
     let instance = linker.instantiate(&mut store, &module)?;
