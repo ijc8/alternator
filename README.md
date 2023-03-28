@@ -1,4 +1,6 @@
-# alternator
+# Alternator: A General-Purpose Generative Music Player
+
+Demo: https://ijc8.me/alternator/
 
 Paper: https://doi.org/10.5281/zenodo.6767436
 
