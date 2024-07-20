@@ -130,7 +130,7 @@ self.onmessage = async (event) => {
     self.path = event.data.path + "/"
     // Load from blob to avoid MIME type complaints.
     const code = await (await fetch(`${self.path}main.js`)).text()
-    const url = URL.createObjectURL(new Blob([code]))
+    const url = URL.createObjectURL(new Blob([code], { type: "application/javascript" }))
     importScripts(url)
     await setup(event.data.sampleRate)
     _buffer = new Float32Array(HISTORY_SECONDS * event.data.sampleRate)
